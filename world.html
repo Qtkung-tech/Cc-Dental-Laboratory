@@ -3,427 +3,276 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Golden Robots - Dental Lab World</title>
+  <title>Golden Robot Lab</title>
   <style>
-    * {
+    body, html {
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body, html {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #0b0f19;
-      font-family: 'Arial', sans-serif;
-      color: #fff;
+      background: #0b0f19;
     }
-    
-    #canvas {
+    canvas {
       display: block;
       width: 100%;
       height: 100%;
     }
-    
-    .ui-overlay {
+    #info {
       position: absolute;
-      top: 20px;
-      left: 20px;
-      background: rgba(11, 15, 25, 0.9);
+      top: 10px;
+      left: 10px;
+      color: #ffe17d;
+      font-family: Arial, sans-serif;
+      z-index: 100;
+      background: rgba(11, 15, 25, 0.8);
+      padding: 15px;
       border: 2px solid #f3be36;
-      border-radius: 10px;
-      padding: 15px 20px;
-      z-index: 10;
+      border-radius: 5px;
       max-width: 300px;
     }
-    
-    .ui-overlay h1 {
-      color: #ffe17d;
-      font-size: 20px;
-      margin-bottom: 10px;
-      text-shadow: 0 0 10px rgba(255, 225, 125, 0.5);
-    }
-    
-    .ui-overlay p {
-      color: #9aa0b4;
-      font-size: 12px;
-      line-height: 1.4;
-    }
-    
-    .stats-panel {
+    #stats {
       position: absolute;
-      bottom: 20px;
-      right: 20px;
-      background: rgba(11, 15, 25, 0.9);
-      border: 2px solid #00f2fe;
-      border-radius: 10px;
-      padding: 15px 20px;
-      z-index: 10;
-      min-width: 200px;
-    }
-    
-    .stats-panel h2 {
+      bottom: 10px;
+      right: 10px;
       color: #00f2fe;
-      font-size: 14px;
-      margin-bottom: 10px;
-      text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
-    }
-    
-    .stat-line {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      color: #9aa0b4;
-      margin: 5px 0;
-    }
-    
-    .stat-value {
-      color: #ffe17d;
-      font-weight: bold;
-    }
-    
-    .controls {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      background: rgba(11, 15, 25, 0.9);
-      border: 2px solid #2ed573;
-      border-radius: 10px;
-      padding: 12px 15px;
-      z-index: 10;
-      font-size: 11px;
-      color: #9aa0b4;
-      line-height: 1.6;
-    }
-    
-    .controls strong {
-      color: #2ed573;
+      font-family: Arial, sans-serif;
+      z-index: 100;
+      background: rgba(11, 15, 25, 0.8);
+      padding: 15px;
+      border: 2px solid #00f2fe;
+      border-radius: 5px;
+      font-size: 12px;
     }
   </style>
 </head>
 <body>
-  <canvas id="canvas"></canvas>
-  
-  <div class="ui-overlay">
-    <h1>🤖 Golden Robot Lab</h1>
-    <p>Watch your adorable golden minions work at the dental laboratory stations. Drag to rotate, scroll to zoom!</p>
+  <div id="info">
+    <h2 style="margin: 0 0 10px 0;">🤖 Golden Robot Lab</h2>
+    <p style="margin: 0; font-size: 12px;">Drag to rotate • Scroll to zoom<br>Watch your minions work!</p>
   </div>
-  
-  <div class="controls">
-    <div><strong>🖱️ Drag</strong> - Rotate view</div>
-    <div><strong>🔍 Scroll</strong> - Zoom in/out</div>
-  </div>
-  
-  <div class="stats-panel">
-    <h2>⚙️ Active Minions</h2>
-    <div class="stat-line">
-      <span>Total Working:</span>
-      <span class="stat-value" id="totalBots">0</span>
-    </div>
-    <div class="stat-line">
-      <span>Mail Intake:</span>
-      <span class="stat-value" id="station1">0</span>
-    </div>
-    <div class="stat-line">
-      <span>Lab Tracker:</span>
-      <span class="stat-value" id="station2">0</span>
-    </div>
-    <div class="stat-line">
-      <span>Workstation:</span>
-      <span class="stat-value" id="station3">0</span>
-    </div>
-    <div class="stat-line">
-      <span>QC Finishing:</span>
-      <span class="stat-value" id="station4">0</span>
-    </div>
-    <div class="stat-line">
-      <span>Billing:</span>
-      <span class="stat-value" id="station5">0</span>
-    </div>
-    <div class="stat-line">
-      <span>Shipping:</span>
-      <span class="stat-value" id="station6">0</span>
-    </div>
+  <div id="stats">
+    <div>Total Robots: <span id="total">0</span></div>
+    <div>Station 1: <span id="s1">0</span></div>
+    <div>Station 2: <span id="s2">0</span></div>
+    <div>Station 3: <span id="s3">0</span></div>
+    <div>Station 4: <span id="s4">0</span></div>
+    <div>Station 5: <span id="s5">0</span></div>
+    <div>Station 6: <span id="s6">0</span></div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/controls/OrbitControls.min.js"></script>
-  
+  <script async src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"></script>
+  <script async src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js"></script>
+
   <script>
     let scene, camera, renderer, controls;
-    let goldBots = [];
-    
+    let robots = [];
+    let ready = false;
+
+    function checkReady() {
+      if (typeof THREE !== 'undefined' && ready === false) {
+        ready = true;
+        init();
+      } else if (!ready) {
+        setTimeout(checkReady, 100);
+      }
+    }
+
     function init() {
-      // Scene setup
+      // Scene
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0b0f19);
-      scene.fog = new THREE.Fog(0x0b0f19, 100, 150);
-      
+      scene.fog = new THREE.Fog(0x0b0f19, 150, 200);
+
       // Camera
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(0, 30, 35);
-      
+      camera.position.set(0, 25, 30);
+
       // Renderer
-      const canvas = document.getElementById('canvas');
-      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      
+      document.body.appendChild(renderer.domElement);
+
       // Controls
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
-      controls.dampingFactor = 0.08;
-      controls.autoRotate = false;
+      controls.dampingFactor = 0.05;
       controls.enablePan = true;
-      
+
       // Lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambientLight);
-      
-      const directionalLight = new THREE.DirectionalLight(0xfffaed, 0.8);
-      directionalLight.position.set(30, 40, 30);
-      directionalLight.castShadow = true;
-      directionalLight.shadow.mapSize.width = 2048;
-      directionalLight.shadow.mapSize.height = 2048;
-      directionalLight.shadow.camera.far = 200;
-      scene.add(directionalLight);
-      
-      // Ground
-      createGround();
-      
-      // Stations
-      createStations();
-      
-      // Handle resize
-      window.addEventListener('resize', onWindowResize);
-    }
-    
-    function createGround() {
-      const groundGeo = new THREE.PlaneGeometry(60, 60);
-      const groundMat = new THREE.MeshStandardMaterial({ 
-        color: 0x1a1f2e,
-        roughness: 0.8
-      });
+      const ambLight = new THREE.AmbientLight(0xffffff, 0.7);
+      scene.add(ambLight);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+      dirLight.position.set(30, 50, 30);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 2048;
+      dirLight.shadow.mapSize.height = 2048;
+      dirLight.shadow.camera.far = 300;
+      scene.add(dirLight);
+
+      // Ground plane
+      const groundGeo = new THREE.PlaneGeometry(100, 100);
+      const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1f2e, roughness: 0.8 });
       const ground = new THREE.Mesh(groundGeo, groundMat);
       ground.rotation.x = -Math.PI / 2;
       ground.receiveShadow = true;
       scene.add(ground);
-      
-      // Ground grid
-      const gridHelper = new THREE.GridHelper(60, 20, 0x2a3f5f, 0x1a2f4f);
+
+      // Grid
+      const gridHelper = new THREE.GridHelper(100, 50, 0x2a3f5f, 0x1a2f4f);
       gridHelper.position.y = 0.01;
       scene.add(gridHelper);
+
+      // Create stations and robots
+      createStations();
+
+      // Animation loop
+      animate();
+
+      // Handle resize
+      window.addEventListener('resize', onWindowResize);
     }
-    
+
     function createStations() {
       const stations = [
-        { x: -15, z: 0, label: "Mail Intake", count: 3, color: 0xf3be36 },
-        { x: -10, z: -12, label: "Lab Tracker", count: 2, color: 0xf3be36 },
-        { x: 0, z: 0, label: "Workstation", count: 4, color: 0x00f2fe },
-        { x: 10, z: -12, label: "QC Finishing", count: 3, color: 0x00f2fe },
-        { x: 15, z: 0, label: "Billing", count: 2, color: 0xff6b6b },
-        { x: -5, z: 12, label: "Shipping", count: 3, color: 0x2ed573 }
+        { x: -15, z: 0, label: "Mail", count: 3, color: 0xf3be36 },
+        { x: -8, z: -12, label: "Tracker", count: 2, color: 0xf3be36 },
+        { x: 0, z: 0, label: "Work", count: 4, color: 0x00f2fe },
+        { x: 8, z: -12, label: "QC", count: 3, color: 0x00f2fe },
+        { x: 15, z: 0, label: "Bill", count: 2, color: 0xff6b6b },
+        { x: -5, z: 12, label: "Ship", count: 3, color: 0x2ed573 }
       ];
-      
-      stations.forEach((station, index) => {
-        createStationPod(station.x, station.z, station.label, station.color);
-        
-        for (let i = 0; i < station.count; i++) {
-          const offset = (Math.PI * 2 / station.count) * i;
-          const botX = station.x + Math.cos(offset) * 3;
-          const botZ = station.z + Math.sin(offset) * 3;
-          createGoldenBot(botX, botZ, station.x, station.z, index + 1);
+
+      stations.forEach((st, idx) => {
+        createStationPod(st.x, st.z, st.label, st.color);
+        for (let i = 0; i < st.count; i++) {
+          const angle = (Math.PI * 2 / st.count) * i;
+          const bx = st.x + Math.cos(angle) * 3.5;
+          const bz = st.z + Math.sin(angle) * 3.5;
+          createRobot(bx, bz, st.x, st.z, idx + 1);
         }
       });
     }
-    
+
     function createStationPod(x, z, label, color) {
       const group = new THREE.Group();
-      
-      // Base platform
-      const baseGeo = new THREE.CylinderGeometry(4, 4, 0.3, 32);
-      const baseMat = new THREE.MeshStandardMaterial({ 
-        color: color, 
-        metalness: 0.6, 
-        roughness: 0.3
-      });
+
+      // Base
+      const baseGeo = new THREE.CylinderGeometry(4, 4, 0.4, 32);
+      const baseMat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.6, roughness: 0.3 });
       const base = new THREE.Mesh(baseGeo, baseMat);
-      base.position.y = 0.15;
+      base.position.y = 0.2;
       base.castShadow = true;
       base.receiveShadow = true;
       group.add(base);
-      
-      // Station structure
+
+      // Structure
       const structGeo = new THREE.BoxGeometry(3.5, 2, 3.5);
-      const structMat = new THREE.MeshStandardMaterial({ 
-        color: 0x1b2845,
-        metalness: 0.4
-      });
+      const structMat = new THREE.MeshStandardMaterial({ color: 0x1b2845, metalness: 0.4 });
       const struct = new THREE.Mesh(structGeo, structMat);
       struct.position.y = 1.5;
       struct.castShadow = true;
       struct.receiveShadow = true;
       group.add(struct);
-      
+
       // Roof
-      const roofGeo = new THREE.ConeGeometry(2.5, 1, 8);
-      const roofMat = new THREE.MeshStandardMaterial({ 
-        color: 0xdae2ed,
-        metalness: 0.5
-      });
+      const roofGeo = new THREE.ConeGeometry(2.5, 1.2, 8);
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0xdae2ed, metalness: 0.5 });
       const roof = new THREE.Mesh(roofGeo, roofMat);
       roof.position.y = 2.8;
       roof.castShadow = true;
       group.add(roof);
-      
-      // Label
-      createTextLabel(label, x, z + 3, 0.5);
-      
+
       group.position.set(x, 0, z);
       scene.add(group);
     }
-    
-    function createGoldenBot(x, z, homeX, homeZ, stationId) {
+
+    function createRobot(x, z, homeX, homeZ, stationId) {
       const group = new THREE.Group();
-      
-      // Body - Shiny golden sphere
-      const bodyGeo = new THREE.SphereGeometry(0.5, 32, 32);
-      const bodyMat = new THREE.MeshStandardMaterial({ 
-        color: 0xf3be36, 
-        metalness: 0.9, 
-        roughness: 0.15
-      });
+
+      // Body - Golden sphere
+      const bodyGeo = new THREE.SphereGeometry(0.5, 24, 24);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf3be36, metalness: 0.9, roughness: 0.15 });
       const body = new THREE.Mesh(bodyGeo, bodyMat);
       body.castShadow = true;
       body.receiveShadow = true;
       group.add(body);
-      
-      // Eyes - Glowing cyan
-      const eyeGeo = new THREE.SphereGeometry(0.15, 16, 16);
+
+      // Eyes
+      const eyeGeo = new THREE.SphereGeometry(0.15, 12, 12);
       const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe });
-      
-      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-      leftEye.position.set(-0.2, 0.15, 0.45);
-      group.add(leftEye);
-      
-      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-      rightEye.position.set(0.2, 0.15, 0.45);
-      group.add(rightEye);
-      
+
+      const eye1 = new THREE.Mesh(eyeGeo, eyeMat);
+      eye1.position.set(-0.2, 0.15, 0.45);
+      group.add(eye1);
+
+      const eye2 = new THREE.Mesh(eyeGeo, eyeMat);
+      eye2.position.set(0.2, 0.15, 0.45);
+      group.add(eye2);
+
       // Legs
-      const legGeo = new THREE.SphereGeometry(0.12, 12, 12);
-      const legMat = new THREE.MeshStandardMaterial({ 
-        color: 0xb88314, 
-        roughness: 0.5 
-      });
-      
+      const legGeo = new THREE.SphereGeometry(0.1, 12, 12);
+      const legMat = new THREE.MeshStandardMaterial({ color: 0xb88314, roughness: 0.5 });
+
       const leg1 = new THREE.Mesh(legGeo, legMat);
       leg1.position.set(-0.25, -0.4, 0.1);
       group.add(leg1);
-      
+
       const leg2 = new THREE.Mesh(legGeo, legMat);
       leg2.position.set(0.25, -0.4, 0.1);
       group.add(leg2);
-      
+
       group.position.set(x, 0.8, z);
       scene.add(group);
-      
-      goldBots.push({
+
+      robots.push({
         mesh: group,
-        homeX: homeX,
-        homeZ: homeZ,
-        x: x,
-        z: z,
-        stationId: stationId,
+        homeX, homeZ, stationId,
         angle: Math.random() * Math.PI * 2,
-        speed: 0.8 + Math.random() * 0.6,
-        radius: 3.5,
-        leg1: leg1,
-        leg2: leg2,
+        speed: 0.7 + Math.random() * 0.5,
+        leg1, leg2,
         time: 0
       });
     }
-    
-    function createTextLabel(text, x, z, scale) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 128;
-      const ctx = canvas.getContext('2d');
-      
-      ctx.fillStyle = '#f3be36';
-      ctx.font = 'bold 48px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(text, 256, 64);
-      
-      const texture = new THREE.CanvasTexture(canvas);
-      const material = new THREE.MeshBasicMaterial({ map: texture });
-      const geometry = new THREE.PlaneGeometry(4, 1);
-      const mesh = new THREE.Mesh(geometry, material);
-      
-      mesh.position.set(x, 4, z);
-      mesh.rotation.x = -Math.PI / 6;
-      scene.add(mesh);
-    }
-    
-    function updateBots(deltaTime) {
-      goldBots.forEach(bot => {
-        bot.time += deltaTime;
-        
-        // Circular walking motion
-        bot.angle += bot.speed * deltaTime * 0.5;
-        
-        const newX = bot.homeX + Math.cos(bot.angle) * bot.radius;
-        const newZ = bot.homeZ + Math.sin(bot.angle) * bot.radius;
-        
-        bot.mesh.position.x = newX;
-        bot.mesh.position.z = newZ;
-        bot.mesh.rotation.y = bot.angle;
-        
-        // Bouncing motion
-        bot.mesh.position.y = 0.8 + Math.sin(bot.time * 6) * 0.2;
-        
-        // Leg animation
-        bot.leg1.position.z = Math.sin(bot.time * 8) * 0.1;
-        bot.leg2.position.z = -Math.sin(bot.time * 8) * 0.1;
-      });
-      
-      // Update stats
-      updateStats();
-    }
-    
-    function updateStats() {
-      document.getElementById('totalBots').textContent = goldBots.length;
-      
-      for (let i = 1; i <= 6; i++) {
-        const count = goldBots.filter(bot => bot.stationId === i).length;
-        document.getElementById(`station${i}`).textContent = count;
-      }
-    }
-    
+
     function animate() {
       requestAnimationFrame(animate);
-      
-      const deltaTime = 1 / 60;
-      
-      updateBots(deltaTime);
+
+      const dt = 1 / 60;
+      robots.forEach(r => {
+        r.time += dt;
+        r.angle += r.speed * dt * 0.4;
+
+        const nx = r.homeX + Math.cos(r.angle) * 3.5;
+        const nz = r.homeZ + Math.sin(r.angle) * 3.5;
+        r.mesh.position.set(nx, 0.8 + Math.sin(r.time * 8) * 0.15, nz);
+        r.mesh.rotation.y = r.angle;
+
+        r.leg1.position.z = Math.sin(r.time * 10) * 0.08;
+        r.leg2.position.z = -Math.sin(r.time * 10) * 0.08;
+      });
+
+      // Update stats
+      document.getElementById('total').textContent = robots.length;
+      for (let i = 1; i <= 6; i++) {
+        const count = robots.filter(r => r.stationId === i).length;
+        document.getElementById(`s${i}`).textContent = count;
+      }
+
       controls.update();
-      
       renderer.render(scene, camera);
     }
-    
+
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
-    
-    // Start the experience
-    init();
-    animate();
+
+    checkReady();
   </script>
 </body>
 </html>
