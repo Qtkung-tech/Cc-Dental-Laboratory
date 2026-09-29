@@ -1,278 +1,250 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Golden Robot Lab</title>
-  <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #0b0f19;
-    }
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-    #info {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      color: #ffe17d;
-      font-family: Arial, sans-serif;
-      z-index: 100;
-      background: rgba(11, 15, 25, 0.8);
-      padding: 15px;
-      border: 2px solid #f3be36;
-      border-radius: 5px;
-      max-width: 300px;
-    }
-    #stats {
-      position: absolute;
-      bottom: 10px;
-      right: 10px;
-      color: #00f2fe;
-      font-family: Arial, sans-serif;
-      z-index: 100;
-      background: rgba(11, 15, 25, 0.8);
-      padding: 15px;
-      border: 2px solid #00f2fe;
-      border-radius: 5px;
-      font-size: 12px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robot Lab World</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #05070d; font-family: system-ui, sans-serif; }
+  canvas { display: block; }
+  #stats {
+    position: fixed; top: 12px; left: 12px; min-width: 190px;
+    background: rgba(10, 18, 30, 0.8); border: 1px solid #22d3ee55; border-radius: 10px;
+    color: #d8f7ff; padding: 12px 14px; font-size: 14px; backdrop-filter: blur(6px);
+  }
+  #stats h3 { margin: 0 0 8px; font-size: 15px; color: #22d3ee; }
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+  .total { border-top: 1px solid #22d3ee44; margin-top: 6px; padding-top: 6px; font-weight: 600; }
+  #hint { position: fixed; bottom: 10px; width: 100%; text-align: center; color: #7fa4b3; font-size: 12px; pointer-events: none; }
+</style>
 </head>
 <body>
-  <div id="info">
-    <h2 style="margin: 0 0 10px 0;">🤖 Golden Robot Lab</h2>
-    <p style="margin: 0; font-size: 12px;">Drag to rotate • Scroll to zoom<br>Watch your minions work!</p>
-  </div>
-  <div id="stats">
-    <div>Total Robots: <span id="total">0</span></div>
-    <div>Station 1: <span id="s1">0</span></div>
-    <div>Station 2: <span id="s2">0</span></div>
-    <div>Station 3: <span id="s3">0</span></div>
-    <div>Station 4: <span id="s4">0</span></div>
-    <div>Station 5: <span id="s5">0</span></div>
-    <div>Station 6: <span id="s6">0</span></div>
-  </div>
+<div id="stats"></div>
+<div id="hint">Drag to rotate · Scroll to zoom · Right-drag to pan</div>
 
-  <script async src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"></script>
-  <script async src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
 
-  <script>
-    let scene, camera, renderer, controls;
-    let robots = [];
-    let ready = false;
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-    function checkReady() {
-      if (typeof THREE !== 'undefined' && ready === false) {
-        ready = true;
-        init();
-      } else if (!ready) {
-        setTimeout(checkReady, 100);
-      }
-    }
+// ---------- Config ----------
+const TOTAL_ROBOTS = 17; // spread across the stations
+const STATIONS = [
+  { name: 'Mail',        color: 0x60a5fa },
+  { name: 'Lab Tracker', color: 0xa78bfa },
+  { name: 'Workstation', color: 0x34d399 },
+  { name: 'QC',          color: 0xfbbf24 },
+  { name: 'Billing',     color: 0xf472b6 },
+  { name: 'Shipping',    color: 0xfb923c },
+];
+const LAYOUT_RADIUS = 16;
+const WALK_RADIUS = 4.2;
 
-    function init() {
-      // Scene
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0b0f19);
-      scene.fog = new THREE.Fog(0x0b0f19, 150, 200);
+// ---------- Scene ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
 
-      // Camera
-      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(0, 25, 30);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070d);
+scene.fog = new THREE.Fog(0x05070d, 40, 90);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-      // Renderer
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.shadowMap.enabled = true;
-      document.body.appendChild(renderer.domElement);
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 200);
+camera.position.set(0, 26, 34);
 
-      // Controls
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
-      controls.enablePan = true;
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI / 2.05;
+controls.minDistance = 8;
+controls.maxDistance = 70;
 
-      // Lighting
-      const ambLight = new THREE.AmbientLight(0xffffff, 0.7);
-      scene.add(ambLight);
+scene.add(new THREE.AmbientLight(0x6688aa, 0.5));
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.position.set(10, 25, 10);
+scene.add(sun);
 
-      const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
-      dirLight.position.set(30, 50, 30);
-      dirLight.castShadow = true;
-      dirLight.shadow.mapSize.width = 2048;
-      dirLight.shadow.mapSize.height = 2048;
-      dirLight.shadow.camera.far = 300;
-      scene.add(dirLight);
+// ---------- Floor ----------
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(60, 64).rotateX(-Math.PI / 2),
+  new THREE.MeshStandardMaterial({ color: 0x0a0f18, roughness: 0.6, metalness: 0.4 })
+);
+scene.add(floor);
+const grid = new THREE.GridHelper(120, 60, 0x22d3ee, 0x123044);
+grid.position.y = 0.02;
+grid.material.transparent = true;
+grid.material.opacity = 0.5;
+scene.add(grid);
 
-      // Ground plane
-      const groundGeo = new THREE.PlaneGeometry(100, 100);
-      const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1f2e, roughness: 0.8 });
-      const ground = new THREE.Mesh(groundGeo, groundMat);
-      ground.rotation.x = -Math.PI / 2;
-      ground.receiveShadow = true;
-      scene.add(ground);
+// ---------- Helpers ----------
+function makeLabel(text, color) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(8,14,24,0.85)';
+  g.fillRect(0, 0, 512, 128);
+  g.strokeStyle = '#' + color.toString(16).padStart(6, '0');
+  g.lineWidth = 6;
+  g.strokeRect(3, 3, 506, 122);
+  g.fillStyle = '#fff';
+  g.font = 'bold 60px system-ui, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, 256, 68);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
+  s.scale.set(5, 1.25, 1);
+  return s;
+}
 
-      // Grid
-      const gridHelper = new THREE.GridHelper(100, 50, 0x2a3f5f, 0x1a2f4f);
-      gridHelper.position.y = 0.01;
-      scene.add(gridHelper);
+// ---------- Stations ----------
+const stationGroups = [];
+STATIONS.forEach((st, i) => {
+  const a = (i / STATIONS.length) * Math.PI * 2;
+  const g = new THREE.Group();
+  g.position.set(Math.cos(a) * LAYOUT_RADIUS, 0, Math.sin(a) * LAYOUT_RADIUS);
 
-      // Create stations and robots
-      createStations();
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(2.2, 2.6, 0.5, 40),
+    new THREE.MeshStandardMaterial({ color: 0x1b2433, metalness: 0.8, roughness: 0.3 })
+  );
+  base.position.y = 0.25;
+  g.add(base);
 
-      // Animation loop
-      animate();
+  const glowMat = new THREE.MeshStandardMaterial({
+    color: st.color, emissive: st.color, emissiveIntensity: 1.5
+  });
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.07, 12, 64).rotateX(Math.PI / 2), glowMat);
+  ring.position.y = 0.52;
+  g.add(ring);
 
-      // Handle resize
-      window.addEventListener('resize', onWindowResize);
-    }
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(2, 1.6, 2),
+    new THREE.MeshStandardMaterial({ color: 0x263247, metalness: 0.7, roughness: 0.35 })
+  );
+  body.position.y = 1.3;
+  g.add(body);
 
-    function createStations() {
-      const stations = [
-        { x: -15, z: 0, label: "Mail", count: 3, color: 0xf3be36 },
-        { x: -8, z: -12, label: "Tracker", count: 2, color: 0xf3be36 },
-        { x: 0, z: 0, label: "Work", count: 4, color: 0x00f2fe },
-        { x: 8, z: -12, label: "QC", count: 3, color: 0x00f2fe },
-        { x: 15, z: 0, label: "Bill", count: 2, color: 0xff6b6b },
-        { x: -5, z: 12, label: "Ship", count: 3, color: 0x2ed573 }
-      ];
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.8), glowMat);
+  screen.position.set(0, 1.5, 1.01);
+  g.add(screen);
 
-      stations.forEach((st, idx) => {
-        createStationPod(st.x, st.z, st.label, st.color);
-        for (let i = 0; i < st.count; i++) {
-          const angle = (Math.PI * 2 / st.count) * i;
-          const bx = st.x + Math.cos(angle) * 3.5;
-          const bz = st.z + Math.sin(angle) * 3.5;
-          createRobot(bx, bz, st.x, st.z, idx + 1);
-        }
-      });
-    }
+  const dome = new THREE.Mesh(
+    new THREE.SphereGeometry(0.7, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.MeshStandardMaterial({ color: st.color, transparent: true, opacity: 0.6, emissive: st.color, emissiveIntensity: 0.5 })
+  );
+  dome.position.y = 2.1;
+  g.add(dome);
 
-    function createStationPod(x, z, label, color) {
-      const group = new THREE.Group();
+  const light = new THREE.PointLight(st.color, 25, 14);
+  light.position.y = 3;
+  g.add(light);
 
-      // Base
-      const baseGeo = new THREE.CylinderGeometry(4, 4, 0.4, 32);
-      const baseMat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.6, roughness: 0.3 });
-      const base = new THREE.Mesh(baseGeo, baseMat);
-      base.position.y = 0.2;
-      base.castShadow = true;
-      base.receiveShadow = true;
-      group.add(base);
+  const label = makeLabel(st.name, st.color);
+  label.position.y = 4;
+  g.add(label);
 
-      // Structure
-      const structGeo = new THREE.BoxGeometry(3.5, 2, 3.5);
-      const structMat = new THREE.MeshStandardMaterial({ color: 0x1b2845, metalness: 0.4 });
-      const struct = new THREE.Mesh(structGeo, structMat);
-      struct.position.y = 1.5;
-      struct.castShadow = true;
-      struct.receiveShadow = true;
-      group.add(struct);
+  // face center
+  body.lookAt(0, body.position.y, 0);
+  screen.position.set(0, 1.5, 0);
+  screen.rotation.y = body.rotation.y;
+  screen.translateZ(1.01);
 
-      // Roof
-      const roofGeo = new THREE.ConeGeometry(2.5, 1.2, 8);
-      const roofMat = new THREE.MeshStandardMaterial({ color: 0xdae2ed, metalness: 0.5 });
-      const roof = new THREE.Mesh(roofGeo, roofMat);
-      roof.position.y = 2.8;
-      roof.castShadow = true;
-      group.add(roof);
+  scene.add(g);
+  stationGroups.push(g);
+});
 
-      group.position.set(x, 0, z);
-      scene.add(group);
-    }
+// ---------- Robots ----------
+const goldMat = new THREE.MeshStandardMaterial({ color: 0xffc933, metalness: 1, roughness: 0.15 });
+const eyeMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 3 });
+const legMat = new THREE.MeshStandardMaterial({ color: 0x6b3f1d, roughness: 0.8 });
+const bodyGeo = new THREE.SphereGeometry(0.5, 32, 24);
+const eyeGeo = new THREE.SphereGeometry(0.09, 12, 12);
+const legGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.45, 8).translate(0, -0.225, 0);
 
-    function createRobot(x, z, homeX, homeZ, stationId) {
-      const group = new THREE.Group();
+function makeRobot() {
+  const r = new THREE.Group();
+  const body = new THREE.Mesh(bodyGeo, goldMat);
+  body.position.y = 0.85;
+  r.add(body);
+  for (const x of [-0.17, 0.17]) {
+    const eye = new THREE.Mesh(eyeGeo, eyeMat);
+    eye.position.set(x, 0.95, 0.44);
+    r.add(eye);
+  }
+  const legs = [];
+  for (const x of [-0.18, 0.18]) {
+    const leg = new THREE.Mesh(legGeo, legMat);
+    leg.position.set(x, 0.5, 0);
+    r.add(leg);
+    legs.push(leg);
+  }
+  r.userData.legs = legs;
+  return r;
+}
 
-      // Body - Golden sphere
-      const bodyGeo = new THREE.SphereGeometry(0.5, 24, 24);
-      const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf3be36, metalness: 0.9, roughness: 0.15 });
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.castShadow = true;
-      body.receiveShadow = true;
-      group.add(body);
+const counts = new Array(STATIONS.length).fill(0);
+const robots = [];
+for (let n = 0; n < TOTAL_ROBOTS; n++) {
+  const s = n % STATIONS.length;
+  counts[s]++;
+  const mesh = makeRobot();
+  scene.add(mesh);
+  robots.push({
+    mesh, station: s,
+    angle: Math.random() * Math.PI * 2,
+    speed: (0.35 + Math.random() * 0.25) * (Math.random() < 0.5 ? 1 : -1),
+    radius: WALK_RADIUS + (Math.random() - 0.5) * 1.2,
+    phase: Math.random() * 10,
+  });
+}
 
-      // Eyes
-      const eyeGeo = new THREE.SphereGeometry(0.15, 12, 12);
-      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe });
+// ---------- Stats panel ----------
+const statsEl = document.getElementById('stats');
+statsEl.innerHTML = '<h3>Robots per Station</h3>' +
+  STATIONS.map((s, i) =>
+    `<div class="row"><span><span class="dot" style="background:#${s.color.toString(16).padStart(6, '0')}"></span>${s.name}</span><b>${counts[i]}</b></div>`
+  ).join('') +
+  `<div class="row total"><span>Total</span><b>${TOTAL_ROBOTS}</b></div>`;
 
-      const eye1 = new THREE.Mesh(eyeGeo, eyeMat);
-      eye1.position.set(-0.2, 0.15, 0.45);
-      group.add(eye1);
+// ---------- Animate ----------
+const clock = new THREE.Clock();
+function animate() {
+  const dt = clock.getDelta();
+  const t = clock.elapsedTime;
+  for (const r of robots) {
+    r.angle += r.speed * dt;
+    const c = stationGroups[r.station].position;
+    const x = c.x + Math.cos(r.angle) * r.radius;
+    const z = c.z + Math.sin(r.angle) * r.radius;
+    r.mesh.position.set(x, Math.abs(Math.sin(t * 8 + r.phase)) * 0.06, z);
+    const dir = Math.sign(r.speed);
+    const tx = -Math.sin(r.angle) * dir, tz = Math.cos(r.angle) * dir;
+    r.mesh.rotation.y = Math.atan2(tx, tz);
+    const swing = Math.sin(t * 8 + r.phase) * 0.6;
+    r.mesh.userData.legs[0].rotation.x = swing;
+    r.mesh.userData.legs[1].rotation.x = -swing;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
 
-      const eye2 = new THREE.Mesh(eyeGeo, eyeMat);
-      eye2.position.set(0.2, 0.15, 0.45);
-      group.add(eye2);
-
-      // Legs
-      const legGeo = new THREE.SphereGeometry(0.1, 12, 12);
-      const legMat = new THREE.MeshStandardMaterial({ color: 0xb88314, roughness: 0.5 });
-
-      const leg1 = new THREE.Mesh(legGeo, legMat);
-      leg1.position.set(-0.25, -0.4, 0.1);
-      group.add(leg1);
-
-      const leg2 = new THREE.Mesh(legGeo, legMat);
-      leg2.position.set(0.25, -0.4, 0.1);
-      group.add(leg2);
-
-      group.position.set(x, 0.8, z);
-      scene.add(group);
-
-      robots.push({
-        mesh: group,
-        homeX, homeZ, stationId,
-        angle: Math.random() * Math.PI * 2,
-        speed: 0.7 + Math.random() * 0.5,
-        leg1, leg2,
-        time: 0
-      });
-    }
-
-    function animate() {
-      requestAnimationFrame(animate);
-
-      const dt = 1 / 60;
-      robots.forEach(r => {
-        r.time += dt;
-        r.angle += r.speed * dt * 0.4;
-
-        const nx = r.homeX + Math.cos(r.angle) * 3.5;
-        const nz = r.homeZ + Math.sin(r.angle) * 3.5;
-        r.mesh.position.set(nx, 0.8 + Math.sin(r.time * 8) * 0.15, nz);
-        r.mesh.rotation.y = r.angle;
-
-        r.leg1.position.z = Math.sin(r.time * 10) * 0.08;
-        r.leg2.position.z = -Math.sin(r.time * 10) * 0.08;
-      });
-
-      // Update stats
-      document.getElementById('total').textContent = robots.length;
-      for (let i = 1; i <= 6; i++) {
-        const count = robots.filter(r => r.stationId === i).length;
-        document.getElementById(`s${i}`).textContent = count;
-      }
-
-      controls.update();
-      renderer.render(scene, camera);
-    }
-
-    function onWindowResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    checkReady();
-  </script>
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
 </body>
 </html>
