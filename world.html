@@ -930,7 +930,7 @@
       { title: "Station 2: Start Track", bot: "Squat Tracker Bot", activeTask: "Calibrating job schedule & timeline", progress: 68, metricLabel: "Run Cycle", metricValue: "08:31 AM Nominal", barColor: "#00f2fe" },
       { title: "Station 3: Chemist Workstation", bot: "Tall Chemist Bot", activeTask: "3D Resin Vat photopolymerization", progress: 48, metricLabel: "Vat Temp / Layer", metricValue: "28.4°C | 50µm", barColor: "#2ed573" },
       { title: "Station 4: Shipping Track", bot: "Aviator Bot (QC Scanner)", activeTask: "Crate barcode verification", progress: 92, metricLabel: "Dispatched", metricValue: "18 Orders Today", barColor: "#e67e22" },
-      { title: "Station 5: Master Hub", bot: "Analyst Bot (Chief AI)", activeTask: "Pipeline optimization & Gantt forecast", progress: 99, metricLabel: "Cost Efficiency", metricValue: "$14.50 Est. (Optimal)", barColor: "#a55eea" }
+      { title: "Station 5: Master Hub", bot: "Analyst Bot (Chief AI)", activeTask: "Pipeline optimization & Gantt forecast", progress: 99, metricLabel: "Cost Efficiency", metricValue: "$14.50 Est. (Ops)", barColor: "#a55eea" }
     ];
 
     function updateHoverTaskBar() {
@@ -1006,278 +1006,110 @@
       speechBubbleEl.style.top = `${y}px`;
     }
 
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
+    function openAiModal(tabName) {
+      const modal = document.getElementById('aiModal');
+      modal.style.display = 'flex';
+      switchAiTab(tabName);
+    }
 
-    renderer.domElement.addEventListener('mousemove', (event) => {
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-      raycaster.setFromCamera(mouse, camera);
+    function closeAiModal() {
+      document.getElementById('aiModal').style.display = 'none';
+    }
 
-      let closestStationIdx = -1;
-      let closestDist = Infinity;
+    function switchAiTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.modal-body').forEach(el => el.style.display = 'none');
+      const targetTab = document.getElementById(`tab-${tabName}`);
+      const targetContent = document.getElementById(`tabContent-${tabName}`);
+      if (targetTab) targetTab.classList.add('active');
+      if (targetContent) targetContent.style.display = 'flex';
+    }
 
-      stationLayout.forEach((st, idx) => {
-        const stPos = new THREE.Vector3(st.x, 0, st.z);
-        const dist = raycaster.ray.distanceToPoint(stPos);
-        if (dist < 4.4 && dist < closestDist) {
-          closestDist = dist;
-          closestStationIdx = idx;
-        }
-      });
-
-      if (closestStationIdx !== hoveredStationIdx) {
-        hoveredStationIdx = closestStationIdx;
-        updateHoverTaskBar();
-      } else if (hoveredStationIdx !== -1) {
-        updateHoverTaskBar();
-      }
-    });
-
-    renderer.domElement.addEventListener('mouseleave', () => {
-      hoveredStationIdx = -1;
-      updateHoverTaskBar();
-    });
-
-    renderer.domElement.addEventListener('dblclick', (event) => {
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-      raycaster.setFromCamera(mouse, camera);
-
-      let closestStationIdx = -1;
-      let closestDist = Infinity;
-      stationLayout.forEach((st, idx) => {
-        const stPos = new THREE.Vector3(st.x, 0, st.z);
-        const dist = raycaster.ray.distanceToPoint(stPos);
-        if (dist < 4.5 && dist < closestDist) {
-          closestDist = dist;
-          closestStationIdx = idx;
-        }
-      });
-
-      if (closestStationIdx !== -1) {
-        const selectEl = document.getElementById('chatTargetBot');
-        if (selectEl) selectEl.selectedIndex = closestStationIdx;
-        focusStation(closestStationIdx);
-        openAiModal('chat');
-      }
-    });
-
-    const clock = new THREE.Clock();
-
-    function focusStation(idx) {
-      document.querySelectorAll('.station-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
-      const st = stationLayout[idx];
+    function focusStation(index) {
+      const st = stationLayout[index];
       if (!st) return;
+      camera.position.set(st.x, 18, st.z + 18);
+      document.querySelectorAll('.station-btn').forEach(btn => btn.classList.remove('active'));
+      const btn = document.getElementById(`stBtn-${index}`);
+      if (btn) btn.classList.add('active');
+      hoveredStationIdx = index;
+    }
 
-      const targetCam = new THREE.Vector3(st.x, 14, st.z + 18);
-      const startCam = camera.position.clone();
-      const startTime = performance.now();
+    function loadSampleEmail() {
+      document.getElementById('intakeEmailText').value = `FROM: clinic@drharpal.com\nTO: lab@cc-dental.com\nSUBJECT: New Case #8841-B Upper Arch Guide\nDATE: 2024-12-15\n\nDear CC Dental Lab,\n\nWe have a new case for immediate processing:\n- Patient: John Smith\n- Case ID: #8841-B\n- Work Type: Upper Arch Surgical Guide\n- Due Date: 2024-12-22\n- Special Instructions: High precision biocompatible material\n\nPlease confirm receipt.`;
+    }
 
-      function lerpCam() {
-        const p = Math.min((performance.now() - startTime) / 600, 1);
-        camera.position.lerpVectors(startCam, targetCam, p);
-        if (controls && controls.target) controls.target.set(st.x, 1.2, st.z);
-        if (p < 1) requestAnimationFrame(lerpCam);
+    async function processEmailWithGemini() {
+      const text = document.getElementById('intakeEmailText').value;
+      const output = document.getElementById('intakeOutput');
+      output.textContent = '⏳ Processing...';
+      try {
+        const result = await callGeminiApi(`Extract patient details and due date from this dental email:\n\n${text}`);
+        output.textContent = result;
+      } catch (err) {
+        output.textContent = `❌ ${err.message}`;
       }
-      lerpCam();
+    }
+
+    async function tunePrinterWithGemini() {
+      const prompt = document.getElementById('printerPromptInput').value;
+      const output = document.getElementById('printerOutput');
+      output.textContent = '⏳ Updating resin profile...';
+      try {
+        const result = await callGeminiApi(`Provide a print profile for: ${prompt}`);
+        output.textContent = result;
+      } catch (err) {
+        output.textContent = `❌ ${err.message}`;
+      }
+    }
+
+    async function chatWithBotGemini() {
+      const bot = document.getElementById('chatTargetBot').value;
+      const prompt = document.getElementById('chatUserInput').value;
+      const output = document.getElementById('chatOutput');
+      output.textContent = '⏳ Transmitting...';
+      try {
+        const result = await callGeminiApi(`You are a lab bot named ${bot}. Reply helpfully to this user request: ${prompt}`);
+        output.textContent = result;
+      } catch (err) {
+        output.textContent = `❌ ${err.message}`;
+      }
+    }
+
+    function triggerRandomAiEvent() {
+      const messages = [
+        '🚨 Urgent: Case #8841-B needs QC review.',
+        '📦 3 packages have cleared shipping.',
+        '⚡ Printer station is running at 94% efficiency.',
+        '📅 Tomorrow’s schedule is fully booked.'
+      ];
+      const message = messages[Math.floor(Math.random() * messages.length)];
+      show3DSpeechBubble(new THREE.Vector3(0, 6, 0), message, 4000);
     }
 
     function animate() {
       requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-      const elapsed = clock.getElapsedTime();
 
-      // Patrol bots with subtle bobbing
-      goldBots.forEach((bot) => {
-        bot.angle += bot.speed * delta;
-        const tx = bot.homeX + Math.cos(bot.angle) * bot.radius;
-        const tz = bot.homeZ + Math.sin(bot.angle) * bot.radius;
-        bot.group.position.x = tx;
-        bot.group.position.z = tz;
-        bot.group.rotation.y = -bot.angle + Math.PI / 2;
+      if (controls && controls.update) controls.update();
 
-        bot.group.position.y = 1.35 + Math.abs(Math.sin(elapsed * 6 + bot.angle)) * 0.1;
-        bot.leftFoot.position.z = Math.sin(elapsed * 8) * 0.06;
-        bot.rightFoot.position.z = -Math.sin(elapsed * 8) * 0.06;
+      goldBots.forEach(bot => {
+        bot.angle += 0.015 * bot.speed;
+        bot.group.position.x = bot.homeX + Math.cos(bot.angle) * bot.radius;
+        bot.group.position.z = bot.homeZ + Math.sin(bot.angle) * bot.radius;
+        bot.leftArm.rotation.z = Math.sin(Date.now() * 0.001) * 0.12 - 0.3;
+        bot.rightArm.rotation.z = Math.sin(Date.now() * 0.001 + Math.PI) * 0.12 + 0.3;
+        bot.headTop.rotation.y = Math.sin(Date.now() * 0.0005) * 0.15;
       });
 
-      // 3D printer vertical build layer & UV pulse
       if (printerRef) {
-        const speed = printerRef.printSpeedFactor || 1.0;
-        const layerPhase = (Math.sin(elapsed * 1.2 * speed) + 1) * 0.5;
-        printerRef.carriageArm.position.y = 0.72 + (layerPhase * 0.48);
-        printerRef.uvLight.intensity = 1.3 + Math.sin(elapsed * 8 * speed) * 0.9;
+        printerRef.carriageArm.position.y = 1.25 + Math.sin(Date.now() * 0.002) * 0.15;
+        printerRef.uvLight.intensity = 1.8 + Math.sin(Date.now() * 0.003) * 0.5;
       }
 
       update3DSpeechBubblePosition();
-      controls.update();
+      updateHoverTaskBar();
       renderer.render(scene, camera);
     }
-
-    window.openAiModal = function(tabName = 'intake') {
-      const modal = document.getElementById('aiModal');
-      if (modal) modal.style.display = 'flex';
-      switchAiTab(tabName);
-    };
-
-    window.closeAiModal = function() {
-      const modal = document.getElementById('aiModal');
-      if (modal) modal.style.display = 'none';
-    };
-
-    window.switchAiTab = function(tabName) {
-      ['intake', 'printer', 'chat'].forEach(t => {
-        const tabBtn = document.getElementById(`tab-${t}`);
-        const tabContent = document.getElementById(`tabContent-${t}`);
-        if (tabBtn) tabBtn.classList.toggle('active', t === tabName);
-        if (tabContent) tabContent.style.display = (t === tabName) ? 'flex' : 'none';
-      });
-    };
-
-    window.loadSampleEmail = function() {
-      const sample = `FROM: notify@freqtycloud.com\nSUBJECT: New STL Scan Package Ready - Case #8841-B\n\nHello Lab Team,\nDr. Jennifer Harpal (Oakridge Family Dental) has submitted an upper arch digital impression for patient Case #8841. Requirement: Rapid 3D printed model + surgical guide. Requested dispatch turnaround within 4 business days. Color preference: Translucent UV Green.`;
-      document.getElementById('intakeEmailText').value = sample;
-    };
-
-    window.processEmailWithGemini = async function() {
-      const text = document.getElementById('intakeEmailText').value.trim();
-      if (!text) return;
-      const btn = document.getElementById('intakeSubmitBtn');
-      const out = document.getElementById('intakeOutput');
-
-      btn.disabled = true;
-      btn.innerText = "✨ Gemini parsing order...";
-      out.innerText = "Analyzing clinical parameters...";
-
-      const prompt = `Parse the following dental lab email into structured JSON:\n\n${text}`;
-      const systemPrompt = "You are Station 1 Mail Intake Bot for a high-tech dental laboratory. Extract clinical case details accurately. Always compute an estimated due date and priority.";
-      const schema = {
-        type: "OBJECT",
-        properties: {
-          doctorName: { type: "STRING" },
-          clinicName: { type: "STRING" },
-          caseNumber: { type: "STRING" },
-          requestedProducts: { type: "ARRAY", items: { type: "STRING" } },
-          priority: { type: "STRING" },
-          targetTurnaroundDays: { type: "INTEGER" },
-          summaryNote: { type: "STRING" }
-        },
-        required: ["doctorName", "clinicName", "caseNumber", "requestedProducts", "priority", "targetTurnaroundDays", "summaryNote"]
-      };
-
-      try {
-        const raw = await callGeminiApi(prompt, systemPrompt, schema);
-        const parsed = JSON.parse(raw);
-        out.innerText = JSON.stringify(parsed, null, 2);
-
-        focusStation(0);
-        show3DSpeechBubble(
-          new THREE.Vector3(-12.5, 1.8, 2.8),
-          `💌 <b>Mail Bot:</b> Received Case <b>${parsed.caseNumber}</b> from <b>${parsed.doctorName}</b>! Priority: <span style="color:#2ed573">${parsed.priority}</span> (${parsed.targetTurnaroundDays} days). Routing to Station 2!`
-        );
-      } catch (err) {
-        out.innerText = "Error calling Gemini: " + err.message;
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "Parse & Route Order with Gemini";
-      }
-    };
-
-    window.tunePrinterWithGemini = async function() {
-      const promptText = document.getElementById('printerPromptInput').value.trim();
-      if (!promptText) return;
-      const btn = document.getElementById('printerSubmitBtn');
-      const out = document.getElementById('printerOutput');
-
-      btn.disabled = true;
-      btn.innerText = "🔬 Gemini optimizing parameters...";
-      out.innerText = "Calculating resin photopolymerization dynamics...";
-
-      const systemPrompt = "You are Station 3 Head Chemist Gold Bot. Formulate optimal dental 3D resin printer parameters.";
-      const schema = {
-        type: "OBJECT",
-        properties: {
-          materialName: { type: "STRING" },
-          layerHeightMicrons: { type: "INTEGER" },
-          curingLaserSecondsPerLayer: { type: "NUMBER" },
-          vatColorHex: { type: "STRING" },
-          speedMultiplier: { type: "NUMBER" },
-          chemistAdvice: { type: "STRING" }
-        },
-        required: ["materialName", "layerHeightMicrons", "curingLaserSecondsPerLayer", "vatColorHex", "speedMultiplier", "chemistAdvice"]
-      };
-
-      try {
-        const raw = await callGeminiApi(promptText, systemPrompt, schema);
-        const spec = JSON.parse(raw);
-        out.innerText = `Material: ${spec.materialName}\nLayer: ${spec.layerHeightMicrons}µm | Exposure: ${spec.curingLaserSecondsPerLayer}s\nVat Color: ${spec.vatColorHex}\nChemist Note: ${spec.chemistAdvice}`;
-
-        if (printerRef) {
-          printerRef.printSpeedFactor = Math.max(0.4, Math.min(2.5, spec.speedMultiplier || 1.0));
-          if (spec.vatColorHex && spec.vatColorHex.startsWith('#')) {
-            const hexVal = parseInt(spec.vatColorHex.replace('#', '0x'), 16);
-            printerRef.resinLiquidMesh.material.color.setHex(hexVal);
-            printerRef.uvLight.color.setHex(hexVal);
-          }
-        }
-
-        focusStation(2);
-        show3DSpeechBubble(
-          new THREE.Vector3(0, 2.0, 3.2),
-          `🔬 <b>Chemist Bot:</b> Formulated <b>${spec.materialName}</b>! Set to ${spec.layerHeightMicrons}µm layers. Printing active!`
-        );
-      } catch (err) {
-        out.innerText = "Error: " + err.message;
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "Generate Print Spec & Apply to 3D Printer";
-      }
-    };
-
-    window.chatWithBotGemini = async function() {
-      const query = document.getElementById('chatUserInput').value.trim();
-      const botName = document.getElementById('chatTargetBot').value;
-      if (!query) return;
-
-      const btn = document.getElementById('chatSubmitBtn');
-      const out = document.getElementById('chatOutput');
-
-      btn.disabled = true;
-      btn.innerText = "🤖 Gold Bot thinking...";
-      out.innerText = "Transmitting to station...";
-
-      const systemPrompt = `You are a tiny, cheerful, ultra-precise gold laboratory robot wearing a clean white lab coat and safety goggles in an automated dental hex village. You represent: ${botName}. Speak in character (helpful, enthusiastic, technical, concise, max 2 sentences).`;
-
-      try {
-        const reply = await callGeminiApi(query, systemPrompt);
-        out.innerText = reply;
-
-        const botIdx = document.getElementById('chatTargetBot').selectedIndex;
-        focusStation(botIdx);
-        const st = stationLayout[botIdx];
-        show3DSpeechBubble(new THREE.Vector3(st.x, 2.0, st.z), `🤖 <b>${botName.split('(')[0]}:</b> ${reply}`);
-      } catch (err) {
-        out.innerText = "Communication error: " + err.message;
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "Transmit to Bot";
-      }
-    };
-
-    window.triggerRandomAiEvent = async function() {
-      show3DSpeechBubble(new THREE.Vector3(12.5, 2.2, 2.8), "⚡ <b>Master Hub AI:</b> Querying Gemini for pipeline optimization...", 3000);
-      try {
-        const alertMsg = await callGeminiApi(
-          "Generate a quick 1-sentence urgent laboratory pipeline alert or status broadcast for a dental bot hex village.",
-          "You are Master Hub AI in a 3D gold bot lab. Generate a punchy, cute, technical status broadcast under 20 words."
-        );
-        focusStation(4);
-        show3DSpeechBubble(new THREE.Vector3(12.5, 2.2, 2.8), `⚡ <b>Master Hub AI:</b> ${alertMsg}`, 7000);
-      } catch (e) {
-        show3DSpeechBubble(new THREE.Vector3(12.5, 2.2, 2.8), "⚡ <b>Master Hub AI:</b> All stations operating at 99.8% nominal efficiency!", 5000);
-      }
-    };
 
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -1285,10 +1117,8 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // Start animation loop on window load
-    window.onload = function () {
-      animate();
-    };
+    animate();
   </script>
+
 </body>
 </html>
