@@ -1,250 +1,1294 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Robot Lab World</title>
-<style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #05070d; font-family: system-ui, sans-serif; }
-  canvas { display: block; }
-  #stats {
-    position: fixed; top: 12px; left: 12px; min-width: 190px;
-    background: rgba(10, 18, 30, 0.8); border: 1px solid #22d3ee55; border-radius: 10px;
-    color: #d8f7ff; padding: 12px 14px; font-size: 14px; backdrop-filter: blur(6px);
-  }
-  #stats h3 { margin: 0 0 8px; font-size: 15px; color: #22d3ee; }
-  .row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
-  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
-  .total { border-top: 1px solid #22d3ee44; margin-top: 6px; padding-top: 6px; font-weight: 600; }
-  #hint { position: fixed; bottom: 10px; width: 100%; text-align: center; color: #7fa4b3; font-size: 12px; pointer-events: none; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cute Gold Bot Hex Village</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0a0d18;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: #e6edf3;
+    }
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      z-index: 1;
+    }
+    .ui-header {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .ui-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #f5b729;
+      letter-spacing: -0.3px;
+      text-shadow: 0 2px 10px rgba(245, 183, 41, 0.35);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ui-subtitle {
+      font-size: 12px;
+      color: #8da1bf;
+      margin-top: 4px;
+    }
+    .action-dock {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      z-index: 20;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .btn-action {
+      background: rgba(19, 24, 40, 0.88);
+      border: 1px solid rgba(245, 183, 41, 0.4);
+      color: #ffdd77;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-action:hover {
+      background: rgba(245, 183, 41, 0.2);
+      border-color: #f5b729;
+      transform: translateY(-1px);
+      color: #fff;
+    }
+    .station-dock {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      display: flex;
+      gap: 10px;
+      background: rgba(14, 18, 30, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 8px 14px;
+      border-radius: 14px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+      max-width: 95vw;
+      overflow-x: auto;
+    }
+    .station-btn {
+      background: transparent;
+      border: none;
+      color: #9ab0cf;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .station-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .station-btn.active {
+      color: #101420;
+      background: #f5b729;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .dot-green { background: #2ed573; box-shadow: 0 0 6px #2ed573; }
+    .dot-blue  { background: #00f2fe; box-shadow: 0 0 6px #00f2fe; }
+    .dot-amber { background: #e67e22; box-shadow: 0 0 6px #e67e22; }
+    .dot-purple{ background: #a55eea; box-shadow: 0 0 6px #a55eea; }
+
+    /* 3D Speech Bubble */
+    #speech-bubble {
+      position: absolute;
+      display: none;
+      z-index: 50;
+      background: rgba(16, 21, 36, 0.95);
+      border: 1px solid #f5b729;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 16px rgba(245, 183, 41, 0.35);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1.45;
+      max-width: 270px;
+      pointer-events: none;
+      transform: translate(-50%, -100%);
+      transition: opacity 0.25s ease;
+      backdrop-filter: blur(8px);
+    }
+    #speech-bubble:after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -6px;
+      border-width: 6px;
+      border-style: solid;
+      border-color: #f5b729 transparent transparent transparent;
+    }
+
+    /* AI Modal Drawer */
+    .ai-modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(4, 7, 14, 0.6);
+      backdrop-filter: blur(6px);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .ai-modal-card {
+      width: 520px;
+      max-width: 92vw;
+      background: #111626;
+      border: 1px solid rgba(245, 183, 41, 0.4);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 25px rgba(245, 183, 41, 0.2);
+      border-radius: 16px;
+      padding: 20px;
+      color: #e6edf3;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 10px;
+    }
+    .modal-tabs {
+      display: flex;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 4px;
+      border-radius: 10px;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: #92a4bf;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: #f5b729;
+      color: #0b0f19;
+    }
+    .modal-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    textarea, input, select {
+      width: 100%;
+      background: rgba(20, 27, 44, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #fff;
+      font-size: 12px;
+      outline: none;
+      font-family: inherit;
+    }
+    textarea:focus, input:focus, select:focus {
+      border-color: #f5b729;
+    }
+    .btn-submit {
+      background: #f5b729;
+      color: #0d1220;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .btn-submit:hover {
+      background: #ffc94d;
+    }
+    .ai-output-box {
+      background: rgba(8, 11, 20, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      color: #63e6be;
+      max-height: 140px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
-<div id="stats"></div>
-<div id="hint">Drag to rotate · Scroll to zoom · Right-drag to pan</div>
 
-<script type="importmap">
-{ "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-} }
-</script>
+  <!-- 3D WebGL Canvas Container -->
+  <div id="canvas-container"></div>
 
-<script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+  <!-- UI Header -->
+  <div class="ui-header">
+    <div class="ui-title">✨ Gold Bot Hex Village</div>
+    <div class="ui-subtitle">Hover stations to inspect active tasks • Double-click any station to speak with its bot</div>
+  </div>
 
-// ---------- Config ----------
-const TOTAL_ROBOTS = 17; // spread across the stations
-const STATIONS = [
-  { name: 'Mail',        color: 0x60a5fa },
-  { name: 'Lab Tracker', color: 0xa78bfa },
-  { name: 'Workstation', color: 0x34d399 },
-  { name: 'QC',          color: 0xfbbf24 },
-  { name: 'Billing',     color: 0xf472b6 },
-  { name: 'Shipping',    color: 0xfb923c },
-];
-const LAYOUT_RADIUS = 16;
-const WALK_RADIUS = 4.2;
+  <!-- Action Dock -->
+  <div class="action-dock">
+    <button class="btn-action" onclick="openAiModal('intake')">💌 Process Lab Email</button>
+    <button class="btn-action" onclick="openAiModal('printer')">🖨️ AI 3D Resin Tuner</button>
+    <button class="btn-action" onclick="openAiModal('chat')">💬 Talk to Bot</button>
+    <button class="btn-action" onclick="triggerRandomAiEvent()">⚡ Urgent Pipeline Broadcast</button>
+  </div>
 
-// ---------- Scene ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-document.body.appendChild(renderer.domElement);
+  <!-- Station Dock -->
+  <div class="station-dock">
+    <button class="station-btn active" id="stBtn-0" onclick="focusStation(0)"><div class="status-dot dot-green"></div> 1. Mail Intake</button>
+    <button class="station-btn" id="stBtn-1" onclick="focusStation(1)"><div class="status-dot dot-blue"></div> 2. Start Track</button>
+    <button class="station-btn" id="stBtn-2" onclick="focusStation(2)"><div class="status-dot dot-green"></div> 3. Workstation (3D Print)</button>
+    <button class="station-btn" id="stBtn-3" onclick="focusStation(3)"><div class="status-dot dot-amber"></div> 4. Shipping Track</button>
+    <button class="station-btn" id="stBtn-4" onclick="focusStation(4)"><div class="status-dot dot-purple"></div> 5. Master Hub</button>
+  </div>
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x05070d);
-scene.fog = new THREE.Fog(0x05070d, 40, 90);
-const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  <!-- 3D Speech Bubble -->
+  <div id="speech-bubble"></div>
 
-const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 200);
-camera.position.set(0, 26, 34);
+  <!-- AI Modal Backdrop -->
+  <div class="ai-modal-backdrop" id="aiModal" onclick="if(event.target===this)closeAiModal()">
+    <div class="ai-modal-card">
+      <div class="modal-header">
+        <div class="modal-tabs">
+          <button class="tab-btn active" id="tab-intake" onclick="switchAiTab('intake')">1. Email Intake</button>
+          <button class="tab-btn" id="tab-printer" onclick="switchAiTab('printer')">2. 3D Resin Tuner</button>
+          <button class="tab-btn" id="tab-chat" onclick="switchAiTab('chat')">3. Bot Chat</button>
+        </div>
+        <button onclick="closeAiModal()" style="background:none; border:none; color:#889ab2; font-size:16px; cursor:pointer;">✕</button>
+      </div>
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.maxPolarAngle = Math.PI / 2.05;
-controls.minDistance = 8;
-controls.maxDistance = 70;
+      <!-- Tab 1: Intake -->
+      <div class="modal-body" id="tabContent-intake">
+        <div style="font-size:11px; color:#8da1bf;">Paste dental office emails to let Station 1 Mail Bot extract patient details and due dates:</div>
+        <textarea id="intakeEmailText" rows="4" placeholder="FROM: clinic@drharpal.com&#10;SUBJECT: New Case #8841-B Upper Arch Guide"></textarea>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-action" style="flex:1;" onclick="loadSampleEmail()">Load Sample Email</button>
+          <button class="btn-submit" style="flex:2;" id="intakeSubmitBtn" onclick="processEmailWithGemini()">Parse & Route Order with Gemini</button>
+        </div>
+        <div class="ai-output-box" id="intakeOutput">// Structured JSON output will appear here...</div>
+      </div>
 
-scene.add(new THREE.AmbientLight(0x6688aa, 0.5));
-const sun = new THREE.DirectionalLight(0xffffff, 1.2);
-sun.position.set(10, 25, 10);
-scene.add(sun);
+      <!-- Tab 2: 3D Printer Tuning -->
+      <div class="modal-body" id="tabContent-printer" style="display:none;">
+        <div style="font-size:11px; color:#8da1bf;">Ask Station 3 Chemist Bot to calculate resin curing specs and live-update the 3D printer:</div>
+        <input type="text" id="printerPromptInput" value="High precision biocompatible surgical guide resin at 50 microns" placeholder="Describe resin or application...">
+        <button class="btn-submit" id="printerSubmitBtn" onclick="tunePrinterWithGemini()">Generate Print Spec & Apply to 3D Printer</button>
+        <div class="ai-output-box" id="printerOutput">// Printer live telemetry updates will appear here...</div>
+      </div>
 
-// ---------- Floor ----------
-const floor = new THREE.Mesh(
-  new THREE.CircleGeometry(60, 64).rotateX(-Math.PI / 2),
-  new THREE.MeshStandardMaterial({ color: 0x0a0f18, roughness: 0.6, metalness: 0.4 })
-);
-scene.add(floor);
-const grid = new THREE.GridHelper(120, 60, 0x22d3ee, 0x123044);
-grid.position.y = 0.02;
-grid.material.transparent = true;
-grid.material.opacity = 0.5;
-scene.add(grid);
+      <!-- Tab 3: Bot Chat -->
+      <div class="modal-body" id="tabContent-chat" style="display:none;">
+        <div style="font-size:11px; color:#8da1bf;">Speak directly with any station's Gold Bot specialist:</div>
+        <select id="chatTargetBot">
+          <option value="Mail Bot 1 (Intake & Classification)">Station 1: Mail Bot (Sort Specialist)</option>
+          <option value="Squat Tracker Bot (Timeline Coordinator)">Station 2: Squat Bot (Job Scheduler)</option>
+          <option value="Tall Chemist Bot (3D Resin Specialist)">Station 3: Chemist Bot (Resin Formulator)</option>
+          <option value="Aviator Bot (QC & Shipping Inspector)">Station 4: Aviator Bot (Packaging QC)</option>
+          <option value="Master Hub Analyst (Chief AI Bot)">Station 5: Analyst Bot (Pipeline Chief)</option>
+        </select>
+        <input type="text" id="chatUserInput" placeholder="Ask about current cases, print queue, or turnaround time..." value="What is the current status of dental case #8841-B?">
+        <button class="btn-submit" id="chatSubmitBtn" onclick="chatWithBotGemini()">Transmit to Bot</button>
+        <div class="ai-output-box" id="chatOutput">// Bot transmission log will appear here...</div>
+      </div>
+    </div>
+  </div>
 
-// ---------- Helpers ----------
-function makeLabel(text, color) {
-  const c = document.createElement('canvas');
-  c.width = 512; c.height = 128;
-  const g = c.getContext('2d');
-  g.fillStyle = 'rgba(8,14,24,0.85)';
-  g.fillRect(0, 0, 512, 128);
-  g.strokeStyle = '#' + color.toString(16).padStart(6, '0');
-  g.lineWidth = 6;
-  g.strokeRect(3, 3, 506, 122);
-  g.fillStyle = '#fff';
-  g.font = 'bold 60px system-ui, sans-serif';
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(text, 256, 68);
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
-  s.scale.set(5, 1.25, 1);
-  return s;
-}
+  <script>
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0d18);
+    scene.fog = new THREE.FogExp2(0x0a0d18, 0.012);
 
-// ---------- Stations ----------
-const stationGroups = [];
-STATIONS.forEach((st, i) => {
-  const a = (i / STATIONS.length) * Math.PI * 2;
-  const g = new THREE.Group();
-  g.position.set(Math.cos(a) * LAYOUT_RADIUS, 0, Math.sin(a) * LAYOUT_RADIUS);
+    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 24, 30);
 
-  const base = new THREE.Mesh(
-    new THREE.CylinderGeometry(2.2, 2.6, 0.5, 40),
-    new THREE.MeshStandardMaterial({ color: 0x1b2433, metalness: 0.8, roughness: 0.3 })
-  );
-  base.position.y = 0.25;
-  g.add(base);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.95;
+    container.appendChild(renderer.domElement);
 
-  const glowMat = new THREE.MeshStandardMaterial({
-    color: st.color, emissive: st.color, emissiveIntensity: 1.5
-  });
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.07, 12, 64).rotateX(Math.PI / 2), glowMat);
-  ring.position.y = 0.52;
-  g.add(ring);
+    // OrbitControls with graceful fallback
+    let controls;
+    if (THREE.OrbitControls) {
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2 - 0.05;
+      controls.minDistance = 8;
+      controls.maxDistance = 55;
+    } else {
+      controls = { update: () => {} };
+    }
 
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(2, 1.6, 2),
-    new THREE.MeshStandardMaterial({ color: 0x263247, metalness: 0.7, roughness: 0.35 })
-  );
-  body.position.y = 1.3;
-  g.add(body);
+    // Gentle diffuse lighting (soft cartoon shading - no harsh specular balding)
+    const ambientLight = new THREE.AmbientLight(0xfff3db, 0.85);
+    scene.add(ambientLight);
 
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.8), glowMat);
-  screen.position.set(0, 1.5, 1.01);
-  g.add(screen);
+    const hemiLight = new THREE.HemisphereLight(0xfff5e6, 0x1a2130, 0.7);
+    hemiLight.position.set(0, 30, 0);
+    scene.add(hemiLight);
 
-  const dome = new THREE.Mesh(
-    new THREE.SphereGeometry(0.7, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
-    new THREE.MeshStandardMaterial({ color: st.color, transparent: true, opacity: 0.6, emissive: st.color, emissiveIntensity: 0.5 })
-  );
-  dome.position.y = 2.1;
-  g.add(dome);
+    const sun = new THREE.DirectionalLight(0xffeed1, 0.65);
+    sun.position.set(14, 20, 14);
+    sun.castShadow = true;
+    sun.shadow.mapSize.width = 2048;
+    sun.shadow.mapSize.height = 2048;
+    sun.shadow.bias = -0.0003;
+    scene.add(sun);
 
-  const light = new THREE.PointLight(st.color, 25, 14);
-  light.position.y = 3;
-  g.add(light);
+    const fillLight = new THREE.DirectionalLight(0x90c4f8, 0.45);
+    fillLight.position.set(-16, 12, -14);
+    scene.add(fillLight);
 
-  const label = makeLabel(st.name, st.color);
-  label.position.y = 4;
-  g.add(label);
+    const matHexSurface = new THREE.MeshStandardMaterial({ color: 0x1c2132, roughness: 0.75, metalness: 0.1 });
+    const matBrassPipe = new THREE.MeshStandardMaterial({ color: 0xcc9226, roughness: 0.4, metalness: 0.65 });
+    const matPipeCoupling = new THREE.MeshStandardMaterial({ color: 0xe0a331, roughness: 0.35, metalness: 0.7 });
 
-  // face center
-  body.lookAt(0, body.position.y, 0);
-  screen.position.set(0, 1.5, 0);
-  screen.rotation.y = body.rotation.y;
-  screen.translateZ(1.01);
+    // Satin Cartoon Gold - velvet sheen with warm inner emissive
+    const matGoldBody = new THREE.MeshStandardMaterial({ color: 0xf5b729, metalness: 0.18, roughness: 0.58, emissive: 0x4f2e00, emissiveIntensity: 0.28 });
+    const matGoldTall = new THREE.MeshStandardMaterial({ color: 0xfcb826, metalness: 0.18, roughness: 0.55, emissive: 0x543202, emissiveIntensity: 0.26 });
+    const matGoldChubby = new THREE.MeshStandardMaterial({ color: 0xf7aa1e, metalness: 0.16, roughness: 0.6, emissive: 0x4f2600, emissiveIntensity: 0.3 });
+    const matGoldMini = new THREE.MeshStandardMaterial({ color: 0xffca45, metalness: 0.2, roughness: 0.55, emissive: 0x593b04, emissiveIntensity: 0.28 });
 
-  scene.add(g);
-  stationGroups.push(g);
-});
+    // Lab Coat & Uniform Details
+    const matLabCoat = new THREE.MeshStandardMaterial({ color: 0xf4f7fa, roughness: 0.65 });
+    const matCoatLapel = new THREE.MeshStandardMaterial({ color: 0xe0e7ef, roughness: 0.6 });
+    const matCoatButton = new THREE.MeshStandardMaterial({ color: 0x3b4252, roughness: 0.5 });
+    const matPen = new THREE.MeshStandardMaterial({ color: 0x0984e3 });
 
-// ---------- Robots ----------
-const goldMat = new THREE.MeshStandardMaterial({ color: 0xffc933, metalness: 1, roughness: 0.15 });
-const eyeMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 3 });
-const legMat = new THREE.MeshStandardMaterial({ color: 0x6b3f1d, roughness: 0.8 });
-const bodyGeo = new THREE.SphereGeometry(0.5, 32, 24);
-const eyeGeo = new THREE.SphereGeometry(0.09, 12, 12);
-const legGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.45, 8).translate(0, -0.225, 0);
+    const matGoggleStrap = new THREE.MeshStandardMaterial({ color: 0x4a3219, roughness: 0.65 });
+    const matGoggleRim = new THREE.MeshStandardMaterial({ color: 0xd49b28, metalness: 0.5, roughness: 0.4 });
+    const matGoggleLens = new THREE.MeshBasicMaterial({ color: 0x00f2fe });
+    const matFoot = new THREE.MeshStandardMaterial({ color: 0xc48618, roughness: 0.55 });
 
-function makeRobot() {
-  const r = new THREE.Group();
-  const body = new THREE.Mesh(bodyGeo, goldMat);
-  body.position.y = 0.85;
-  r.add(body);
-  for (const x of [-0.17, 0.17]) {
-    const eye = new THREE.Mesh(eyeGeo, eyeMat);
-    eye.position.set(x, 0.95, 0.44);
-    r.add(eye);
-  }
-  const legs = [];
-  for (const x of [-0.18, 0.18]) {
-    const leg = new THREE.Mesh(legGeo, legMat);
-    leg.position.set(x, 0.5, 0);
-    r.add(leg);
-    legs.push(leg);
-  }
-  r.userData.legs = legs;
-  return r;
-}
+    // Hair tufts & antennas (cures bare reflective heads)
+    const matHairTuft = new THREE.MeshStandardMaterial({ color: 0xdd9216, roughness: 0.5 });
+    const matAntennaRod = new THREE.MeshStandardMaterial({ color: 0xb37a1b, metalness: 0.6, roughness: 0.4 });
+    const matAntennaBeacon = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
 
-const counts = new Array(STATIONS.length).fill(0);
-const robots = [];
-for (let n = 0; n < TOTAL_ROBOTS; n++) {
-  const s = n % STATIONS.length;
-  counts[s]++;
-  const mesh = makeRobot();
-  scene.add(mesh);
-  robots.push({
-    mesh, station: s,
-    angle: Math.random() * Math.PI * 2,
-    speed: (0.35 + Math.random() * 0.25) * (Math.random() < 0.5 ? 1 : -1),
-    radius: WALK_RADIUS + (Math.random() - 0.5) * 1.2,
-    phase: Math.random() * 10,
-  });
-}
+    const goldBots = [];
 
-// ---------- Stats panel ----------
-const statsEl = document.getElementById('stats');
-statsEl.innerHTML = '<h3>Robots per Station</h3>' +
-  STATIONS.map((s, i) =>
-    `<div class="row"><span><span class="dot" style="background:#${s.color.toString(16).padStart(6, '0')}"></span>${s.name}</span><b>${counts[i]}</b></div>`
-  ).join('') +
-  `<div class="row total"><span>Total</span><b>${TOTAL_ROBOTS}</b></div>`;
+    const BOT_ARCHETYPES = {
+      MAIL_BOT: { bodyType: 'sphere', radius: 0.46, goldMat: matGoldBody, tieColor: 0xe74c3c, glasses: 'dual', hat: 'hair_cowlick', holding: 'envelope' },
+      START_BOT: { bodyType: 'squat', radius: 0.52, heightScale: 0.82, goldMat: matGoldChubby, glasses: 'mono_big', hat: 'spring_antenna', holding: 'none' },
+      CHEMIST_BOT: { bodyType: 'tall', radius: 0.38, height: 1.05, goldMat: matGoldTall, glasses: 'dual', hat: 'hair_sprout', holding: 'beaker' },
+      AVIATOR_BOT: { bodyType: 'sphere', radius: 0.46, goldMat: matGoldBody, glasses: 'dual', hasWings: true, hat: 'aviator_cap', holding: 'none' },
+      ANALYST_BOT: { bodyType: 'mini', radius: 0.4, goldMat: matGoldMini, glasses: 'visor_hologram', hat: 'dual_antenna', holding: 'none' }
+    };
 
-// ---------- Animate ----------
-const clock = new THREE.Clock();
-function animate() {
-  const dt = clock.getDelta();
-  const t = clock.elapsedTime;
-  for (const r of robots) {
-    r.angle += r.speed * dt;
-    const c = stationGroups[r.station].position;
-    const x = c.x + Math.cos(r.angle) * r.radius;
-    const z = c.z + Math.sin(r.angle) * r.radius;
-    r.mesh.position.set(x, Math.abs(Math.sin(t * 8 + r.phase)) * 0.06, z);
-    const dir = Math.sign(r.speed);
-    const tx = -Math.sin(r.angle) * dir, tz = Math.cos(r.angle) * dir;
-    r.mesh.rotation.y = Math.atan2(tx, tz);
-    const swing = Math.sin(t * 8 + r.phase) * 0.6;
-    r.mesh.userData.legs[0].rotation.x = swing;
-    r.mesh.userData.legs[1].rotation.x = -swing;
-  }
-  controls.update();
-  renderer.render(scene, camera);
-  requestAnimationFrame(animate);
-}
-animate();
+    function createIndividualGoldBot(stationId, homeX, homeZ) {
+      const archetype = BOT_ARCHETYPES[stationId] || BOT_ARCHETYPES.MAIL_BOT;
+      const botGroup = new THREE.Group();
+      let topY = 0.45;
 
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
-</script>
+      let bodyMesh;
+      if (archetype.bodyType === 'tall') {
+        const bodyGeo = new THREE.CylinderGeometry(archetype.radius, archetype.radius, archetype.height * 0.7, 24);
+        const topDomeGeo = new THREE.SphereGeometry(archetype.radius, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+        topDomeGeo.translate(0, (archetype.height * 0.7) / 2, 0);
+        bodyMesh = new THREE.Mesh(bodyGeo, archetype.goldMat);
+        const domeMesh = new THREE.Mesh(topDomeGeo, archetype.goldMat);
+        bodyMesh.add(domeMesh);
+        bodyMesh.castShadow = true;
+        topY = (archetype.height * 0.7) / 2 + archetype.radius;
+      } else if (archetype.bodyType === 'squat') {
+        const bodyGeo = new THREE.SphereGeometry(archetype.radius, 24, 24);
+        bodyGeo.scale(1.15, archetype.heightScale, 1.15);
+        bodyMesh = new THREE.Mesh(bodyGeo, archetype.goldMat);
+        bodyMesh.castShadow = true;
+        topY = archetype.radius * archetype.heightScale;
+      } else {
+        const bodyGeo = new THREE.SphereGeometry(archetype.radius, 24, 24);
+        bodyMesh = new THREE.Mesh(bodyGeo, archetype.goldMat);
+        bodyMesh.castShadow = true;
+        topY = archetype.radius;
+      }
+      botGroup.add(bodyMesh);
+
+      // Hair tufts and antennas
+      const headTop = new THREE.Group();
+      headTop.position.y = topY - 0.02;
+
+      if (archetype.hat === 'hair_cowlick') {
+        for (let i = -1; i <= 1; i++) {
+          const hairGeo = new THREE.ConeGeometry(0.06, 0.22, 8);
+          hairGeo.translate(0, 0.11, 0);
+          const hair = new THREE.Mesh(hairGeo, matHairTuft);
+          hair.rotation.z = (i * 0.25) + 0.1;
+          hair.rotation.x = i * 0.1;
+          hair.position.set(i * 0.08, 0, 0);
+          headTop.add(hair);
+        }
+      } else if (archetype.hat === 'spring_antenna') {
+        const stemGeo = new THREE.CylinderGeometry(0.025, 0.035, 0.32, 8);
+        stemGeo.translate(0, 0.16, 0);
+        const stem = new THREE.Mesh(stemGeo, matAntennaRod);
+        stem.rotation.z = 0.15;
+        headTop.add(stem);
+
+        const tipGeo = new THREE.SphereGeometry(0.09, 12, 12);
+        const tip = new THREE.Mesh(tipGeo, matAntennaBeacon);
+        tip.position.set(-0.045, 0.32, 0);
+        headTop.add(tip);
+      } else if (archetype.hat === 'hair_sprout') {
+        const sprout1 = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.24, 8), matHairTuft);
+        sprout1.position.set(0.05, 0.1, 0);
+        sprout1.rotation.z = -0.35;
+        headTop.add(sprout1);
+
+        const sprout2 = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.18, 8), matHairTuft);
+        sprout2.position.set(-0.05, 0.08, 0);
+        sprout2.rotation.z = 0.4;
+        headTop.add(sprout2);
+      } else if (archetype.hat === 'dual_antenna') {
+        [-0.26, 0.26].forEach((sideX) => {
+          const earAntenna = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.22, 8), matAntennaRod);
+          earAntenna.position.set(sideX, -0.05, 0);
+          earAntenna.rotation.z = sideX > 0 ? -0.4 : 0.4;
+          headTop.add(earAntenna);
+
+          const earTip = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 10), matAntennaBeacon);
+          earTip.position.set(sideX * 1.35, 0.05, 0);
+          headTop.add(earTip);
+        });
+      }
+      botGroup.add(headTop);
+
+      const coatGeo = new THREE.CylinderGeometry(archetype.radius * 1.05, archetype.radius * 1.15, archetype.radius * 0.95, 20);
+      const coatMesh = new THREE.Mesh(coatGeo, matLabCoat);
+      coatMesh.position.y = -archetype.radius * 0.32;
+      coatMesh.castShadow = true;
+      botGroup.add(coatMesh);
+
+      // Lab Coat Lapel & Buttons
+      const lapelGeo = new THREE.BoxGeometry(archetype.radius * 0.35, archetype.radius * 0.85, 0.08);
+      const lapelMesh = new THREE.Mesh(lapelGeo, matCoatLapel);
+      lapelMesh.position.set(0, -archetype.radius * 0.28, archetype.radius * 1.03);
+      botGroup.add(lapelMesh);
+
+      [-0.1, 0.05, 0.2].forEach((offsetY) => {
+        const btn = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8), matCoatButton);
+        btn.position.set(0.06, -archetype.radius * 0.3 + offsetY, archetype.radius * 1.07);
+        botGroup.add(btn);
+      });
+
+      // Pocket & Lab Pen
+      const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.03), matLabCoat);
+      pocket.position.set(-archetype.radius * 0.48, -archetype.radius * 0.22, archetype.radius * 0.96);
+      pocket.rotation.y = -0.3;
+      botGroup.add(pocket);
+
+      const pen = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.11, 8), matPen);
+      pen.position.set(-archetype.radius * 0.48, -archetype.radius * 0.16, archetype.radius * 0.98);
+      botGroup.add(pen);
+
+      // Goggles & Glasses
+      const strapGeo = new THREE.CylinderGeometry(archetype.radius * 1.02, archetype.radius * 1.02, 0.11, 24);
+      const strapMesh = new THREE.Mesh(strapGeo, matGoggleStrap);
+      strapMesh.position.y = 0.05;
+      botGroup.add(strapMesh);
+
+      if (archetype.glasses === 'mono_big') {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.045, 10, 20), matGoggleRim);
+        rim.position.set(0, 0.06, archetype.radius * 0.96);
+        botGroup.add(rim);
+
+        const lens = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), matGoggleLens);
+        lens.position.set(0, 0.06, archetype.radius * 0.94);
+        botGroup.add(lens);
+
+        const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 10), new THREE.MeshBasicMaterial({ color: 0x051d28 }));
+        pupil.position.set(0, 0.06, archetype.radius * 1.1);
+        botGroup.add(pupil);
+      } else if (archetype.glasses === 'visor_hologram') {
+        const visorGeo = new THREE.CylinderGeometry(archetype.radius * 1.06, archetype.radius * 1.06, 0.14, 16, 1, true, -Math.PI / 3, (2 * Math.PI) / 3);
+        const visorMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
+        const visor = new THREE.Mesh(visorGeo, visorMat);
+        visor.position.y = 0.06;
+        botGroup.add(visor);
+      } else {
+        [-0.17, 0.17].forEach((xEye) => {
+          const rim = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.035, 10, 18), matGoggleRim);
+          rim.position.set(xEye, 0.06, archetype.radius * 0.94);
+          botGroup.add(rim);
+
+          const lens = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 14), matGoggleLens);
+          lens.position.set(xEye, 0.06, archetype.radius * 0.91);
+          botGroup.add(lens);
+
+          const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), new THREE.MeshBasicMaterial({ color: 0x071b26 }));
+          pupil.position.set(xEye, 0.06, archetype.radius * 1.02);
+          botGroup.add(pupil);
+        });
+      }
+
+      // Aviator flight cap & wings
+      if (archetype.hasWings) {
+        const capGeo = new THREE.SphereGeometry(archetype.radius * 1.03, 20, 14, 0, Math.PI * 2, 0, Math.PI / 2);
+        const capMesh = new THREE.Mesh(capGeo, matGoggleStrap);
+        capMesh.position.y = 0.04;
+        botGroup.add(capMesh);
+
+        [-0.48, 0.48].forEach((wingX) => {
+          const wing = new THREE.Group();
+          for (let f = 0; f < 3; f++) {
+            const feather = new THREE.Mesh(new THREE.BoxGeometry(0.18 - f * 0.03, 0.05, 0.02), matLabCoat);
+            feather.position.set((wingX > 0 ? 0.08 : -0.08) * (f + 1), f * 0.04, 0);
+            feather.rotation.z = (wingX > 0 ? -0.25 : 0.25) * (f + 1);
+            wing.add(feather);
+          }
+          wing.position.set(wingX, 0.22, -0.05);
+          botGroup.add(wing);
+        });
+      }
+
+      // Bowtie
+      if (archetype.tieColor) {
+        const tieGroup = new THREE.Group();
+        const tieMat = new THREE.MeshStandardMaterial({ color: archetype.tieColor, roughness: 0.4 });
+        const leftWing = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.14, 4), tieMat);
+        leftWing.rotation.z = Math.PI / 2;
+        leftWing.position.x = -0.07;
+        const rightWing = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.14, 4), tieMat);
+        rightWing.rotation.z = -Math.PI / 2;
+        rightWing.position.x = 0.07;
+        const knot = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), tieMat);
+        tieGroup.add(leftWing, rightWing, knot);
+        tieGroup.position.set(0, -archetype.radius * 0.05, archetype.radius * 1.05);
+        botGroup.add(tieGroup);
+      }
+
+      // Arms & Hands
+      const leftArm = new THREE.Group();
+      leftArm.position.set(-archetype.radius * 1.05, -archetype.radius * 0.15, 0.1);
+      const leftSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.3, 10), matLabCoat);
+      leftSleeve.rotation.z = 0.3;
+      const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), archetype.goldMat);
+      leftHand.position.set(-0.06, -0.2, 0);
+      leftArm.add(leftSleeve, leftHand);
+      botGroup.add(leftArm);
+
+      const rightArm = new THREE.Group();
+      rightArm.position.set(archetype.radius * 1.05, -archetype.radius * 0.15, 0.1);
+      const rightSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.3, 10), matLabCoat);
+      rightSleeve.rotation.z = -0.3;
+      const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), archetype.goldMat);
+      rightHand.position.set(0.06, -0.2, 0);
+      rightArm.add(rightSleeve, rightHand);
+      botGroup.add(rightArm);
+
+      if (archetype.holding === 'envelope') {
+        const envMesh = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.16, 0.02), matLabCoat);
+        envMesh.rotation.set(0.2, 0.3, -0.4);
+        envMesh.position.set(0.12, -0.18, 0.12);
+        rightArm.add(envMesh);
+      } else if (archetype.holding === 'beaker') {
+        const beakerMesh = new THREE.Mesh(
+          new THREE.ConeGeometry(0.12, 0.22, 10),
+          new THREE.MeshStandardMaterial({ color: 0x2ed573, transparent: true, opacity: 0.85, roughness: 0.1 })
+        );
+        beakerMesh.rotation.set(-0.2, 0, 0.2);
+        beakerMesh.position.set(-0.12, -0.16, 0.14);
+        leftArm.add(beakerMesh);
+      }
+
+      // Little Gold Feet
+      const leftFoot = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), matFoot);
+      leftFoot.scale.set(1, 0.7, 1.4);
+      leftFoot.position.set(-archetype.radius * 0.45, -archetype.radius * 0.95, 0.05);
+      botGroup.add(leftFoot);
+
+      const rightFoot = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), matFoot);
+      rightFoot.scale.set(1, 0.7, 1.4);
+      rightFoot.position.set(archetype.radius * 0.45, -archetype.radius * 0.95, 0.05);
+      botGroup.add(rightFoot);
+
+      botGroup.position.set(homeX, 1.35, homeZ);
+      scene.add(botGroup);
+
+      return {
+        group: botGroup,
+        leftFoot,
+        rightFoot,
+        leftArm,
+        rightArm,
+        headTop,
+        homeX,
+        homeZ,
+        stationId,
+        angle: Math.random() * Math.PI * 2,
+        radius: 1.5 + Math.random() * 0.5,
+        speed: 0.7 + Math.random() * 0.4
+      };
+    }
+
+    async function callGeminiApi(promptText, systemInstruction = '', structuredSchema = null) {
+      const apiKey = window.GEMINI_API_KEY || "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+      const payload = {
+        contents: [{ parts: [{ text: promptText }] }]
+      };
+
+      if (systemInstruction) {
+        payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+      }
+
+      if (structuredSchema) {
+        payload.generationConfig = {
+          responseMimeType: "application/json",
+          responseSchema: structuredSchema
+        };
+      }
+
+      let delay = 1000;
+      const maxRetries = 3;
+
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) {
+            if (response.status === 429 && attempt < maxRetries - 1) {
+              await new Promise(r => setTimeout(r, delay));
+              delay *= 2;
+              continue;
+            }
+            throw new Error(`API returned HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!text) throw new Error("No response content from model");
+          return text;
+        } catch (err) {
+          if (attempt === maxRetries - 1) throw err;
+          await new Promise(r => setTimeout(r, delay));
+          delay *= 2;
+        }
+      }
+    }
+
+    function createHexTile(x, z, rimColor, surfaceColor = 0x1c2132) {
+      const tileGroup = new THREE.Group();
+      const radius = 3.6;
+      const shape = new THREE.Shape();
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i;
+        const hx = radius * Math.cos(angle);
+        const hy = radius * Math.sin(angle);
+        if (i === 0) shape.moveTo(hx, hy);
+        else shape.lineTo(hx, hy);
+      }
+      shape.closePath();
+
+      const extrudeSettings = { depth: 0.8, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.16, bevelThickness: 0.16 };
+      const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      geo.rotateX(Math.PI / 2);
+
+      const surfaceMat = new THREE.MeshStandardMaterial({ color: surfaceColor, roughness: 0.75, metalness: 0.12 });
+      const mesh = new THREE.Mesh(geo, surfaceMat);
+      mesh.receiveShadow = true;
+      tileGroup.add(mesh);
+
+      const ringGeo = new THREE.TorusGeometry(radius, 0.14, 8, 6);
+      ringGeo.rotateX(Math.PI / 2);
+      const ringMat = new THREE.MeshStandardMaterial({ color: rimColor, metalness: 0.45, roughness: 0.35 });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.position.y = 0.42;
+      tileGroup.add(ringMesh);
+
+      tileGroup.position.set(x, 0, z);
+      scene.add(tileGroup);
+      return tileGroup;
+    }
+
+    function createConnectingPipe(p1, p2) {
+      const midPoint = new THREE.Vector3((p1.x + p2.x) / 2, 0.42, (p1.z + p2.z) / 2);
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(p1.x, 0.42, p1.z),
+        midPoint,
+        new THREE.Vector3(p2.x, 0.42, p2.z)
+      ]);
+
+      const pipeGeo = new THREE.TubeGeometry(curve, 24, 0.3, 10, false);
+      const pipeMesh = new THREE.Mesh(pipeGeo, matBrassPipe);
+      pipeMesh.castShadow = true;
+      scene.add(pipeMesh);
+
+      const couplingGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.28, 12);
+      couplingGeo.rotateZ(Math.PI / 2);
+      const c1 = new THREE.Mesh(couplingGeo, matPipeCoupling);
+      c1.position.copy(p1).setY(0.42);
+      const c2 = new THREE.Mesh(couplingGeo, matPipeCoupling);
+      c2.position.copy(p2).setY(0.42);
+      scene.add(c1, c2);
+    }
+
+    let printerRef = null;
+
+    const stationLayout = [
+      { id: 'MAIL_BOT', name: "1. Mail Intake", x: -12.5, z: 2.8, rim: 0xf5b729, surface: 0x24221a },
+      { id: 'START_BOT', name: "2. Start Track", x: -6.2, z: -2.8, rim: 0x00f2fe, surface: 0x162534 },
+      { id: 'CHEMIST_BOT', name: "3. Workstation", x: 0.0, z: 3.2, rim: 0x2ed573, surface: 0x182a20 },
+      { id: 'AVIATOR_BOT', name: "4. Shipping Track", x: 6.2, z: -2.8, rim: 0xe67e22, surface: 0x292019 },
+      { id: 'ANALYST_BOT', name: "5. Master Hub", x: 12.5, z: 2.8, rim: 0xa55eea, surface: 0x241a2e }
+    ];
+
+    stationLayout.forEach((st, idx) => {
+      createHexTile(st.x, st.z, st.rim, st.surface);
+
+      // Station 1: Mail Intake
+      if (idx === 0) {
+        const sorterGeo = new THREE.BoxGeometry(2.0, 0.6, 1.4);
+        const sorterMesh = new THREE.Mesh(sorterGeo, new THREE.MeshStandardMaterial({ color: 0x6e4720, roughness: 0.6 }));
+        sorterMesh.position.set(st.x + 0.6, 0.65, st.z - 0.4);
+        scene.add(sorterMesh);
+
+        for (let i = 0; i < 4; i++) {
+          const letter = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.02, 0.24), matLabCoat);
+          letter.position.set(st.x + 0.3 + (i * 0.2), 0.98, st.z - 0.4 + ((i % 2) * 0.15));
+          letter.rotation.y = (i * 0.2) - 0.1;
+          scene.add(letter);
+        }
+      }
+
+      // Station 2: Start Track
+      if (idx === 1) {
+        const btnBase = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, 0.3, 16), matBrassPipe);
+        btnBase.position.set(st.x + 0.8, 0.55, st.z - 0.5);
+        const greenBtn = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.25, 16), new THREE.MeshBasicMaterial({ color: 0x2ed573 }));
+        greenBtn.position.set(st.x + 0.8, 0.72, st.z - 0.5);
+        scene.add(btnBase, greenBtn);
+      }
+
+      // Station 3: Chemist Workstation (3D Resin Printer + Flasks)
+      if (idx === 2) {
+        const printerBase = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 1.3), new THREE.MeshStandardMaterial({ color: 0x222738, roughness: 0.4 }));
+        printerBase.position.set(st.x + 0.8, 0.65, st.z - 0.6);
+
+        const vatGeo = new THREE.BoxGeometry(1.2, 0.15, 1.0);
+        const vatMesh = new THREE.Mesh(vatGeo, new THREE.MeshStandardMaterial({ color: 0x111624, roughness: 0.2 }));
+        vatMesh.position.set(st.x + 0.8, 0.95, st.z - 0.6);
+
+        const liquidPool = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.8), new THREE.MeshBasicMaterial({ color: 0x00f2fe, side: THREE.DoubleSide }));
+        liquidPool.rotation.x = -Math.PI / 2;
+        liquidPool.position.set(st.x + 0.8, 1.03, st.z - 0.6);
+
+        const carriageArm = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.08, 0.6), matBrassPipe);
+        carriageArm.position.set(st.x + 0.8, 1.25, st.z - 0.6);
+
+        const printedModel = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.06, 8, 12, Math.PI), new THREE.MeshStandardMaterial({ color: 0xffdd88 }));
+        printedModel.rotation.x = Math.PI;
+        printedModel.position.set(0, -0.08, 0);
+        carriageArm.add(printedModel);
+
+        const hoodGeo = new THREE.BoxGeometry(1.3, 1.2, 1.1);
+        const hoodMat = new THREE.MeshStandardMaterial({ color: 0xff9900, transparent: true, opacity: 0.35, roughness: 0.1 });
+        const hoodMesh = new THREE.Mesh(hoodGeo, hoodMat);
+        hoodMesh.position.set(st.x + 0.8, 1.5, st.z - 0.6);
+
+        const uvLight = new THREE.PointLight(0x00f2fe, 1.8, 4.0);
+        uvLight.position.set(st.x + 0.8, 1.2, st.z - 0.6);
+        scene.add(printerBase, vatMesh, liquidPool, carriageArm, hoodMesh, uvLight);
+
+        printerRef = {
+          carriageArm: carriageArm,
+          uvLight: uvLight,
+          resinLiquidMesh: liquidPool,
+          printSpeedFactor: 1.0
+        };
+
+        const flask1 = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.4, 10), new THREE.MeshBasicMaterial({ color: 0x2ed573 }));
+        flask1.position.set(st.x - 0.9, 0.65, st.z - 0.8);
+        const flask2 = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.32, 10), new THREE.MeshBasicMaterial({ color: 0x00f2fe }));
+        flask2.position.set(st.x - 0.5, 0.6, st.z - 0.9);
+        scene.add(flask1, flask2);
+      }
+
+      // Station 4: Shipping Track
+      if (idx === 3) {
+        const beltMesh = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.25, 0.9), new THREE.MeshStandardMaterial({ color: 0x282c37, roughness: 0.7 }));
+        beltMesh.position.set(st.x + 0.6, 0.55, st.z - 0.5);
+        scene.add(beltMesh);
+
+        for (let c = 0; c < 3; c++) {
+          const crate = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.48, 0.48), new THREE.MeshStandardMaterial({ color: 0xc19053, roughness: 0.6 }));
+          crate.position.set(st.x + 0.1 + (c * 0.55), 0.92, st.z - 0.5);
+          scene.add(crate);
+        }
+      }
+
+      // Station 5: Master Hub
+      if (idx === 4) {
+        const hubDesk = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 0.5, 16), new THREE.MeshStandardMaterial({ color: 0x202638, roughness: 0.4 }));
+        hubDesk.position.set(st.x, 0.65, st.z);
+        scene.add(hubDesk);
+
+        const holoGeo = new THREE.CylinderGeometry(1.5, 1.5, 0.8, 16, 1, true, -Math.PI / 3, (2 * Math.PI) / 3);
+        const holoMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe, side: THREE.DoubleSide, transparent: true, opacity: 0.45 });
+        const holoMesh = new THREE.Mesh(holoGeo, holoMat);
+        holoMesh.position.set(st.x, 1.6, st.z);
+        scene.add(holoMesh);
+      }
+
+      goldBots.push(createIndividualGoldBot(st.id, st.x - 0.4, st.z + 0.8));
+    });
+
+    for (let i = 0; i < stationLayout.length - 1; i++) {
+      createConnectingPipe(stationLayout[i], stationLayout[i + 1]);
+    }
+
+    const speechBubbleEl = document.getElementById('speech-bubble');
+    let speechTarget3D = null;
+    let speechTimeout = null;
+
+    let hoveredStationIdx = -1;
+    let hoverCardEl = document.createElement('div');
+    hoverCardEl.id = 'station-hover-card';
+    hoverCardEl.style.cssText = `
+      position: fixed;
+      pointer-events: none;
+      z-index: 100;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      background: rgba(14, 18, 30, 0.94);
+      border: 1px solid rgba(245, 183, 41, 0.45);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 16px rgba(245, 183, 41, 0.2);
+      border-radius: 12px;
+      padding: 12px 16px;
+      min-width: 220px;
+      backdrop-filter: blur(10px);
+      font-family: 'Inter', system-ui, sans-serif;
+      color: #fff;
+      transform: translate(-50%, -115%);
+    `;
+    document.body.appendChild(hoverCardEl);
+
+    const STATION_HOVER_DATA = [
+      { title: "Station 1: Mail Intake", bot: "Mail Bot (Sort Specialist)", activeTask: "Scanning incoming STL bundles", progress: 85, metricLabel: "Queued Cases", metricValue: "4 Packages", barColor: "#f5b729" },
+      { title: "Station 2: Start Track", bot: "Squat Tracker Bot", activeTask: "Calibrating job schedule & timeline", progress: 68, metricLabel: "Run Cycle", metricValue: "08:31 AM Nominal", barColor: "#00f2fe" },
+      { title: "Station 3: Chemist Workstation", bot: "Tall Chemist Bot", activeTask: "3D Resin Vat photopolymerization", progress: 48, metricLabel: "Vat Temp / Layer", metricValue: "28.4°C | 50µm", barColor: "#2ed573" },
+      { title: "Station 4: Shipping Track", bot: "Aviator Bot (QC Scanner)", activeTask: "Crate barcode verification", progress: 92, metricLabel: "Dispatched", metricValue: "18 Orders Today", barColor: "#e67e22" },
+      { title: "Station 5: Master Hub", bot: "Analyst Bot (Chief AI)", activeTask: "Pipeline optimization & Gantt forecast", progress: 99, metricLabel: "Cost Efficiency", metricValue: "$14.50 Est. (Optimal)", barColor: "#a55eea" }
+    ];
+
+    function updateHoverTaskBar() {
+      if (hoveredStationIdx === -1) {
+        hoverCardEl.style.opacity = '0';
+        setTimeout(() => { if (hoveredStationIdx === -1) hoverCardEl.style.display = 'none'; }, 200);
+        return;
+      }
+
+      const data = STATION_HOVER_DATA[hoveredStationIdx];
+      if (!data) return;
+
+      const st = stationLayout[hoveredStationIdx];
+      const worldPos = new THREE.Vector3(st.x, 3.0, st.z);
+      worldPos.project(camera);
+
+      if (worldPos.z > 1) {
+        hoverCardEl.style.display = 'none';
+        return;
+      }
+
+      const screenX = (worldPos.x * 0.5 + 0.5) * window.innerWidth;
+      const screenY = (-(worldPos.y * 0.5) + 0.5) * window.innerHeight;
+
+      hoverCardEl.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <div style="font-weight:700; font-size:12px; color:#ffdd59;">${data.title}</div>
+          <div style="font-size:11px; font-weight:700; color:${data.barColor};">${data.progress}%</div>
+        </div>
+        <div style="font-size:11px; color:#8fa0bc; margin-bottom:8px;">${data.bot}</div>
+        <div style="font-size:11px; margin-bottom:6px; color:#e1e7f0;">⚡ ${data.activeTask}</div>
+        <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden; margin-bottom:8px;">
+          <div style="width:${data.progress}%; height:100%; background:${data.barColor}; box-shadow:0 0 8px ${data.barColor}; border-radius:4px;"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:10px; color:#a4b0be; border-top:1px solid rgba(255,255,255,0.08); padding-top:6px;">
+          <span>${data.metricLabel}</span>
+          <span style="font-weight:600; color:#fff;">${data.metricValue}</span>
+        </div>
+      `;
+
+      hoverCardEl.style.left = `${screenX}px`;
+      hoverCardEl.style.top = `${screenY}px`;
+      hoverCardEl.style.display = 'block';
+      requestAnimationFrame(() => { hoverCardEl.style.opacity = '1'; });
+    }
+
+    function show3DSpeechBubble(worldPos, text, duration = 6000) {
+      speechTarget3D = worldPos.clone().add(new THREE.Vector3(0, 3.2, 0));
+      speechBubbleEl.innerHTML = text;
+      speechBubbleEl.style.display = 'block';
+      speechBubbleEl.style.opacity = '1';
+
+      if (speechTimeout) clearTimeout(speechTimeout);
+      speechTimeout = setTimeout(() => {
+        speechBubbleEl.style.opacity = '0';
+        setTimeout(() => { speechBubbleEl.style.display = 'none'; speechTarget3D = null; }, 300);
+      }, duration);
+    }
+
+    function update3DSpeechBubblePosition() {
+      if (!speechTarget3D || speechBubbleEl.style.display === 'none') return;
+      const tempV = speechTarget3D.clone();
+      tempV.project(camera);
+
+      if (tempV.z > 1) {
+        speechBubbleEl.style.display = 'none';
+        return;
+      }
+
+      const x = (tempV.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-(tempV.y * 0.5) + 0.5) * window.innerHeight;
+      speechBubbleEl.style.left = `${x}px`;
+      speechBubbleEl.style.top = `${y}px`;
+    }
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    renderer.domElement.addEventListener('mousemove', (event) => {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+
+      let closestStationIdx = -1;
+      let closestDist = Infinity;
+
+      stationLayout.forEach((st, idx) => {
+        const stPos = new THREE.Vector3(st.x, 0, st.z);
+        const dist = raycaster.ray.distanceToPoint(stPos);
+        if (dist < 4.4 && dist < closestDist) {
+          closestDist = dist;
+          closestStationIdx = idx;
+        }
+      });
+
+      if (closestStationIdx !== hoveredStationIdx) {
+        hoveredStationIdx = closestStationIdx;
+        updateHoverTaskBar();
+      } else if (hoveredStationIdx !== -1) {
+        updateHoverTaskBar();
+      }
+    });
+
+    renderer.domElement.addEventListener('mouseleave', () => {
+      hoveredStationIdx = -1;
+      updateHoverTaskBar();
+    });
+
+    renderer.domElement.addEventListener('dblclick', (event) => {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+
+      let closestStationIdx = -1;
+      let closestDist = Infinity;
+      stationLayout.forEach((st, idx) => {
+        const stPos = new THREE.Vector3(st.x, 0, st.z);
+        const dist = raycaster.ray.distanceToPoint(stPos);
+        if (dist < 4.5 && dist < closestDist) {
+          closestDist = dist;
+          closestStationIdx = idx;
+        }
+      });
+
+      if (closestStationIdx !== -1) {
+        const selectEl = document.getElementById('chatTargetBot');
+        if (selectEl) selectEl.selectedIndex = closestStationIdx;
+        focusStation(closestStationIdx);
+        openAiModal('chat');
+      }
+    });
+
+    const clock = new THREE.Clock();
+
+    function focusStation(idx) {
+      document.querySelectorAll('.station-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+      const st = stationLayout[idx];
+      if (!st) return;
+
+      const targetCam = new THREE.Vector3(st.x, 14, st.z + 18);
+      const startCam = camera.position.clone();
+      const startTime = performance.now();
+
+      function lerpCam() {
+        const p = Math.min((performance.now() - startTime) / 600, 1);
+        camera.position.lerpVectors(startCam, targetCam, p);
+        if (controls && controls.target) controls.target.set(st.x, 1.2, st.z);
+        if (p < 1) requestAnimationFrame(lerpCam);
+      }
+      lerpCam();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+
+      // Patrol bots with subtle bobbing
+      goldBots.forEach((bot) => {
+        bot.angle += bot.speed * delta;
+        const tx = bot.homeX + Math.cos(bot.angle) * bot.radius;
+        const tz = bot.homeZ + Math.sin(bot.angle) * bot.radius;
+        bot.group.position.x = tx;
+        bot.group.position.z = tz;
+        bot.group.rotation.y = -bot.angle + Math.PI / 2;
+
+        bot.group.position.y = 1.35 + Math.abs(Math.sin(elapsed * 6 + bot.angle)) * 0.1;
+        bot.leftFoot.position.z = Math.sin(elapsed * 8) * 0.06;
+        bot.rightFoot.position.z = -Math.sin(elapsed * 8) * 0.06;
+      });
+
+      // 3D printer vertical build layer & UV pulse
+      if (printerRef) {
+        const speed = printerRef.printSpeedFactor || 1.0;
+        const layerPhase = (Math.sin(elapsed * 1.2 * speed) + 1) * 0.5;
+        printerRef.carriageArm.position.y = 0.72 + (layerPhase * 0.48);
+        printerRef.uvLight.intensity = 1.3 + Math.sin(elapsed * 8 * speed) * 0.9;
+      }
+
+      update3DSpeechBubblePosition();
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.openAiModal = function(tabName = 'intake') {
+      const modal = document.getElementById('aiModal');
+      if (modal) modal.style.display = 'flex';
+      switchAiTab(tabName);
+    };
+
+    window.closeAiModal = function() {
+      const modal = document.getElementById('aiModal');
+      if (modal) modal.style.display = 'none';
+    };
+
+    window.switchAiTab = function(tabName) {
+      ['intake', 'printer', 'chat'].forEach(t => {
+        const tabBtn = document.getElementById(`tab-${t}`);
+        const tabContent = document.getElementById(`tabContent-${t}`);
+        if (tabBtn) tabBtn.classList.toggle('active', t === tabName);
+        if (tabContent) tabContent.style.display = (t === tabName) ? 'flex' : 'none';
+      });
+    };
+
+    window.loadSampleEmail = function() {
+      const sample = `FROM: notify@freqtycloud.com\nSUBJECT: New STL Scan Package Ready - Case #8841-B\n\nHello Lab Team,\nDr. Jennifer Harpal (Oakridge Family Dental) has submitted an upper arch digital impression for patient Case #8841. Requirement: Rapid 3D printed model + surgical guide. Requested dispatch turnaround within 4 business days. Color preference: Translucent UV Green.`;
+      document.getElementById('intakeEmailText').value = sample;
+    };
+
+    window.processEmailWithGemini = async function() {
+      const text = document.getElementById('intakeEmailText').value.trim();
+      if (!text) return;
+      const btn = document.getElementById('intakeSubmitBtn');
+      const out = document.getElementById('intakeOutput');
+
+      btn.disabled = true;
+      btn.innerText = "✨ Gemini parsing order...";
+      out.innerText = "Analyzing clinical parameters...";
+
+      const prompt = `Parse the following dental lab email into structured JSON:\n\n${text}`;
+      const systemPrompt = "You are Station 1 Mail Intake Bot for a high-tech dental laboratory. Extract clinical case details accurately. Always compute an estimated due date and priority.";
+      const schema = {
+        type: "OBJECT",
+        properties: {
+          doctorName: { type: "STRING" },
+          clinicName: { type: "STRING" },
+          caseNumber: { type: "STRING" },
+          requestedProducts: { type: "ARRAY", items: { type: "STRING" } },
+          priority: { type: "STRING" },
+          targetTurnaroundDays: { type: "INTEGER" },
+          summaryNote: { type: "STRING" }
+        },
+        required: ["doctorName", "clinicName", "caseNumber", "requestedProducts", "priority", "targetTurnaroundDays", "summaryNote"]
+      };
+
+      try {
+        const raw = await callGeminiApi(prompt, systemPrompt, schema);
+        const parsed = JSON.parse(raw);
+        out.innerText = JSON.stringify(parsed, null, 2);
+
+        focusStation(0);
+        show3DSpeechBubble(
+          new THREE.Vector3(-12.5, 1.8, 2.8),
+          `💌 <b>Mail Bot:</b> Received Case <b>${parsed.caseNumber}</b> from <b>${parsed.doctorName}</b>! Priority: <span style="color:#2ed573">${parsed.priority}</span> (${parsed.targetTurnaroundDays} days). Routing to Station 2!`
+        );
+      } catch (err) {
+        out.innerText = "Error calling Gemini: " + err.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Parse & Route Order with Gemini";
+      }
+    };
+
+    window.tunePrinterWithGemini = async function() {
+      const promptText = document.getElementById('printerPromptInput').value.trim();
+      if (!promptText) return;
+      const btn = document.getElementById('printerSubmitBtn');
+      const out = document.getElementById('printerOutput');
+
+      btn.disabled = true;
+      btn.innerText = "🔬 Gemini optimizing parameters...";
+      out.innerText = "Calculating resin photopolymerization dynamics...";
+
+      const systemPrompt = "You are Station 3 Head Chemist Gold Bot. Formulate optimal dental 3D resin printer parameters.";
+      const schema = {
+        type: "OBJECT",
+        properties: {
+          materialName: { type: "STRING" },
+          layerHeightMicrons: { type: "INTEGER" },
+          curingLaserSecondsPerLayer: { type: "NUMBER" },
+          vatColorHex: { type: "STRING" },
+          speedMultiplier: { type: "NUMBER" },
+          chemistAdvice: { type: "STRING" }
+        },
+        required: ["materialName", "layerHeightMicrons", "curingLaserSecondsPerLayer", "vatColorHex", "speedMultiplier", "chemistAdvice"]
+      };
+
+      try {
+        const raw = await callGeminiApi(promptText, systemPrompt, schema);
+        const spec = JSON.parse(raw);
+        out.innerText = `Material: ${spec.materialName}\nLayer: ${spec.layerHeightMicrons}µm | Exposure: ${spec.curingLaserSecondsPerLayer}s\nVat Color: ${spec.vatColorHex}\nChemist Note: ${spec.chemistAdvice}`;
+
+        if (printerRef) {
+          printerRef.printSpeedFactor = Math.max(0.4, Math.min(2.5, spec.speedMultiplier || 1.0));
+          if (spec.vatColorHex && spec.vatColorHex.startsWith('#')) {
+            const hexVal = parseInt(spec.vatColorHex.replace('#', '0x'), 16);
+            printerRef.resinLiquidMesh.material.color.setHex(hexVal);
+            printerRef.uvLight.color.setHex(hexVal);
+          }
+        }
+
+        focusStation(2);
+        show3DSpeechBubble(
+          new THREE.Vector3(0, 2.0, 3.2),
+          `🔬 <b>Chemist Bot:</b> Formulated <b>${spec.materialName}</b>! Set to ${spec.layerHeightMicrons}µm layers. Printing active!`
+        );
+      } catch (err) {
+        out.innerText = "Error: " + err.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Generate Print Spec & Apply to 3D Printer";
+      }
+    };
+
+    window.chatWithBotGemini = async function() {
+      const query = document.getElementById('chatUserInput').value.trim();
+      const botName = document.getElementById('chatTargetBot').value;
+      if (!query) return;
+
+      const btn = document.getElementById('chatSubmitBtn');
+      const out = document.getElementById('chatOutput');
+
+      btn.disabled = true;
+      btn.innerText = "🤖 Gold Bot thinking...";
+      out.innerText = "Transmitting to station...";
+
+      const systemPrompt = `You are a tiny, cheerful, ultra-precise gold laboratory robot wearing a clean white lab coat and safety goggles in an automated dental hex village. You represent: ${botName}. Speak in character (helpful, enthusiastic, technical, concise, max 2 sentences).`;
+
+      try {
+        const reply = await callGeminiApi(query, systemPrompt);
+        out.innerText = reply;
+
+        const botIdx = document.getElementById('chatTargetBot').selectedIndex;
+        focusStation(botIdx);
+        const st = stationLayout[botIdx];
+        show3DSpeechBubble(new THREE.Vector3(st.x, 2.0, st.z), `🤖 <b>${botName.split('(')[0]}:</b> ${reply}`);
+      } catch (err) {
+        out.innerText = "Communication error: " + err.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Transmit to Bot";
+      }
+    };
+
+    window.triggerRandomAiEvent = async function() {
+      show3DSpeechBubble(new THREE.Vector3(12.5, 2.2, 2.8), "⚡ <b>Master Hub AI:</b> Querying Gemini for pipeline optimization...", 3000);
+      try {
+        const alertMsg = await callGeminiApi(
+          "Generate a quick 1-sentence urgent laboratory pipeline alert or status broadcast for a dental bot hex village.",
+          "You are Master Hub AI in a 3D gold bot lab. Generate a punchy, cute, technical status broadcast under 20 words."
+        );
+        focusStation(4);
+        show3DSpeechBubble(new THREE.Vector3(12.5, 2.2, 2.8), `⚡ <b>Master Hub AI:</b> ${alertMsg}`, 7000);
+      } catch (e) {
+        show3DSpeechBubble(new THREE.Vector3(12.5, 2.2, 2.8), "⚡ <b>Master Hub AI:</b> All stations operating at 99.8% nominal efficiency!", 5000);
+      }
+    };
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Start animation loop on window load
+    window.onload = function () {
+      animate();
+    };
+  </script>
 </body>
 </html>
